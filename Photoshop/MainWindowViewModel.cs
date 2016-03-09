@@ -1,8 +1,10 @@
 ﻿using Microsoft.Win32;
+using Photoshop.Engine;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -57,13 +59,7 @@ namespace Photoshop
 
         private void ChangeToGrayScale()
         {
-            int width = this.Image.PixelWidth;
-            int height = this.Image.PixelHeight;
-            int nStride = (this.Image.PixelWidth * this.Image.Format.BitsPerPixel + 7) / 8;
-            byte[] pixelByteArray = new byte[this.Image.PixelHeight * nStride];
-
-            this.Image.CopyPixels(pixelByteArray, width * 4, 0);
-            
+            ImageManipulator.ApplyGrayScaleTo(_originalBitmap);
             this.Image = BitmapToImageSource(_originalBitmap);
         }
 
@@ -85,16 +81,6 @@ namespace Photoshop
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
     }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct PixelColor
-    {
-        public byte Blue;
-        public byte Green;
-        public byte Red;
-        public byte Alpha;
-    }
-
 
     public class RelayCommand : ICommand
     {

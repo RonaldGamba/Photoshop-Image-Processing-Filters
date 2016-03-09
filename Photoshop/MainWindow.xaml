@@ -17,8 +17,8 @@
                           Command="{Binding ChangeToGrayScaleCommand}"/>
             </MenuItem>
         </Menu>
-        <Canvas Grid.Row="1">
+        <Grid Grid.Row="1">
             <Image Source="{Binding Image}"/>
-        </Canvas>
+        </Grid>
     </Grid>
 </Window>
