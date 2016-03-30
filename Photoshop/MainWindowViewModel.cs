@@ -46,6 +46,15 @@ namespace Photoshop
             }
         }
 
+        private RelayCommand _applyCorrelationCommand;
+        public RelayCommand ApplyCorrelationCommand
+        {
+            get
+            {
+                return _applyCorrelationCommand ?? (_applyCorrelationCommand = new RelayCommand(ApplyCorrelation));
+            }
+        }
+
         private BitmapImage _image;
         public BitmapImage Image
         {
@@ -57,9 +66,16 @@ namespace Photoshop
             }
         }
 
+
         private void ChangeToGrayScale()
         {
             ImageManipulator.ApplyGrayScaleTo(_originalBitmap);
+            this.Image = BitmapToImageSource(_originalBitmap);
+        }
+
+        private void ApplyCorrelation()
+        {
+            ImageManipulator.ApplyCorrelation(_originalBitmap);
             this.Image = BitmapToImageSource(_originalBitmap);
         }
 
