@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Drawing.Imaging;
+using System.IO;
 
 namespace Photoshop.Engine
 {
@@ -39,7 +40,7 @@ namespace Photoshop.Engine
             image.UnlockBits(bmpData);
         }
 
-        public static void ApplyCorrelation(Bitmap image)
+        public static void ApplyCorrelationTo(Bitmap image)
         {
             var rectangleToLock = new Rectangle(0, 0, image.Width, image.Height);
             var bmpData = image.LockBits(rectangleToLock, System.Drawing.Imaging.ImageLockMode.ReadWrite, image.PixelFormat);
@@ -52,26 +53,55 @@ namespace Photoshop.Engine
             Marshal.Copy(adressFirstLine, rgbValues, 0, pixelsLength);
 
             var rgbMatrix = TransformArrayByteToColorRepresentationMatrix(rgbValues, image.Width, image.Height);
-            //var filter = new float[,] { {1/9 ,1/9 ,1/9},
-            //                            {1/9 ,1/9 ,1/9 },
-            //                            {1/9 ,1/9 ,1/9 } };
+            var filter = new float[,] { { 1/9f ,1/9f ,1/9f},
+                                         {1/9f ,1/9f ,1/9f },
+                                         {1/9f ,1/9f ,1/9f } };
 
-            //ApplyCorrelationOnMatrix(rgbMatrix, filter);
+            ApplyCorrelationOnMatrix(rgbMatrix, filter);
             var result = PixelMatrixToArrayByte(rgbMatrix, pixelsLength);
 
-            for (int i = 0; i < pixelsLength; i++)
-            {
-                var a = rgbValues[i];
-                var b = result[i];
-
-                if(a != b)
-                {
-
-                }
-            }
 
             Marshal.Copy(result, 0, adressFirstLine, pixelsLength);
             image.UnlockBits(bmpData);
+        }
+
+        public static Bitmap MakeOr(Bitmap b1, Bitmap b2)
+        {
+            if (b1.Width != b2.Width || b1.Height != b2.Height)
+                throw new ArgumentException("The size of the images must be the same.");
+
+            var b1Bytes = GetBytes(b1);
+            var b2Bytes = GetBytes(b2);
+            var result = new byte[Math.Min(b1Bytes.Length, b2Bytes.Length)];
+
+            for (int i = 0; i < Math.Min(b1Bytes.Length, b2Bytes.Length); i++)
+            {
+                var v1 = (int)b1Bytes[i];
+                var v2 = (int)b2Bytes[i];
+                result[i] = (byte)(v1 & v2);
+            }
+
+            Bitmap bmp;
+            using(var stream = new MemoryStream(result.ToArray()))
+            {
+                bmp = new Bitmap(stream);
+            }
+
+            return bmp;
+        }
+
+        private static byte[] GetBytes(Bitmap image)
+        {
+            var rectangleToLock = new Rectangle(0, 0, image.Width, image.Height);
+            var bmpData = image.LockBits(rectangleToLock, System.Drawing.Imaging.ImageLockMode.ReadWrite, image.PixelFormat);
+
+            var adressFirstLine = bmpData.Scan0;
+
+            var pixelsLength = Math.Abs(bmpData.Stride) * image.Height;
+            var rgbValues = new byte[pixelsLength];
+
+            Marshal.Copy(adressFirstLine, rgbValues, 0, pixelsLength);
+            return rgbValues;
         }
 
         public static Pixel[,] TransformArrayByteToColorRepresentationMatrix(byte[] array, int width, int height)
@@ -95,8 +125,8 @@ namespace Photoshop.Engine
 
         public static byte[] PixelMatrixToArrayByte(Pixel[,] matrix, int pixelLength)
         {
-            var rows = matrix.GetLength(1);
-            var columns = matrix.GetLength(0);
+            var rows = matrix.GetLength(0);
+            var columns = matrix.GetLength(1);
             var bytes = new byte[pixelLength];
             var arrayBytePosition = 0;
 
@@ -119,43 +149,43 @@ namespace Photoshop.Engine
             var rows = matrix.GetLength(0);
             var columns = matrix.GetLength(1);
 
-            for (int i = 1; i < rows; i += 4)
+            for (int i = 1; i < rows - 1; i++)
             {
-                for (int j = 1; j < columns; j += 4)
+                for (int j = 1; j < columns - 1; j++)
                 {
-                    var newR = 0;
-                    var newG = 0;
-                    var newB = 0;
+                    double newR = 0;
+                    double newG = 0;
+                    double newB = 0;
 
-                    newR += (int)(matrix[i - 1, j - 1].R * filter[0, 0]);
-                    newR += (int)(matrix[i - 1, j].R * filter[0, 1]);
-                    newR += (int)(matrix[i - 1, j + 1].R * filter[0, 2]);
-                    newR += (int)(matrix[i, j - 1].R * filter[1, 0]);
-                    newR += (int)(matrix[i, j].R * filter[1, 1]);
-                    newR += (int)(matrix[i, j + 1].R * filter[1, 2]);
-                    newR += (int)(matrix[i + 1, j - 1].R * filter[2, 0]);
-                    newR += (int)(matrix[i + 1, j].R * filter[2, 1]);
-                    newR += (int)(matrix[i + 1, j + 1].R * filter[2, 2]);
+                    newR += (matrix[i - 1, j - 1].R * filter[0, 0]);
+                    newR += (matrix[i - 1, j].R * filter[0, 1]);
+                    newR += (matrix[i - 1, j + 1].R * filter[0, 2]);
+                    newR += (matrix[i, j - 1].R * filter[1, 0]);
+                    newR += (matrix[i, j].R * filter[1, 1]);
+                    newR += (matrix[i, j + 1].R * filter[1, 2]);
+                    newR += (matrix[i + 1, j - 1].R * filter[2, 0]);
+                    newR += (matrix[i + 1, j].R * filter[2, 1]);
+                    newR += (matrix[i + 1, j + 1].R * filter[2, 2]);
 
-                    newG += (int)(matrix[i - 1, j - 1].G * filter[0, 0]);
-                    newG += (int)(matrix[i - 1, j].G * filter[0, 1]);
-                    newG += (int)(matrix[i - 1, j + 1].G * filter[0, 2]);
-                    newG += (int)(matrix[i, j - 1].G * filter[1, 0]);
-                    newG += (int)(matrix[i, j].G * filter[1, 1]);
-                    newG += (int)(matrix[i, j + 1].G * filter[1, 2]);
-                    newG += (int)(matrix[i + 1, j - 1].G * filter[2, 0]);
-                    newG += (int)(matrix[i + 1, j].G * filter[2, 1]);
-                    newG += (int)(matrix[i + 1, j + 1].G * filter[2, 2]);
+                    newG += (matrix[i - 1, j - 1].G * filter[0, 0]);
+                    newG += (matrix[i - 1, j].G * filter[0, 1]);
+                    newG += (matrix[i - 1, j + 1].G * filter[0, 2]);
+                    newG += (matrix[i, j - 1].G * filter[1, 0]);
+                    newG += (matrix[i, j].G * filter[1, 1]);
+                    newG += (matrix[i, j + 1].G * filter[1, 2]);
+                    newG += (matrix[i + 1, j - 1].G * filter[2, 0]);
+                    newG += (matrix[i + 1, j].G * filter[2, 1]);
+                    newG += (matrix[i + 1, j + 1].G * filter[2, 2]);
 
-                    newB += (int)(matrix[i - 1, j - 1].B * filter[0, 0]);
-                    newB += (int)(matrix[i - 1, j].B * filter[0, 1]);
-                    newB += (int)(matrix[i - 1, j + 1].B * filter[0, 2]);
-                    newB += (int)(matrix[i, j - 1].B * filter[1, 0]);
-                    newB += (int)(matrix[i, j].B * filter[1, 1]);
-                    newB += (int)(matrix[i, j + 1].B * filter[1, 2]);
-                    newB += (int)(matrix[i + 1, j - 1].B * filter[2, 0]);
-                    newB += (int)(matrix[i + 1, j].B * filter[2, 1]);
-                    newB += (int)(matrix[i + 1, j + 1].B * filter[2, 2]);
+                    newB += (matrix[i - 1, j - 1].B * filter[0, 0]);
+                    newB += (matrix[i - 1, j].B * filter[0, 1]);
+                    newB += (matrix[i - 1, j + 1].B * filter[0, 2]);
+                    newB += (matrix[i, j - 1].B * filter[1, 0]);
+                    newB += (matrix[i, j].B * filter[1, 1]);
+                    newB += (matrix[i, j + 1].B * filter[1, 2]);
+                    newB += (matrix[i + 1, j - 1].B * filter[2, 0]);
+                    newB += (matrix[i + 1, j].B * filter[2, 1]);
+                    newB += (matrix[i + 1, j + 1].B * filter[2, 2]);
 
                     matrix[i, j] = new Pixel(newR, newG, newB);
                 }
@@ -163,20 +193,22 @@ namespace Photoshop.Engine
         }
     }
 
+
+
     public struct Pixel
     {
-        private readonly int _r;
-        private readonly int _g;
-        private readonly int _b;
+        private readonly double _r;
+        private readonly double _g;
+        private readonly double _b;
 
-        public Pixel(int r, int g, int b)
+        public Pixel(double r, double g, double b)
         {
             _r = r;
             _g = g;
             _b = b;
         }
 
-        public int R
+        public double R
         {
             get
             {
@@ -184,19 +216,19 @@ namespace Photoshop.Engine
             }
         }
 
-        public int G
+        public double G
         {
             get
             {
-                return _r;
+                return _g;
             }
         }
 
-        public int B
+        public double B
         {
             get
             {
-                return _r;
+                return _b;
             }
         }
 

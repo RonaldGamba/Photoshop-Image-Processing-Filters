@@ -55,6 +55,26 @@ namespace Photoshop
             }
         }
 
+        private RelayCommand _makeOrCommand;
+        public RelayCommand MakeOrCommand
+        {
+            get
+            {
+                if (_makeOrCommand == null)
+                    _makeOrCommand = new RelayCommand(MakeOr);
+
+                return _makeOrCommand;
+            }
+        }
+
+        private void MakeOr()
+        {
+            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\empty_circle.jpg");
+            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
+
+            this.Image = this.BitmapToImageSource(ImageManipulator.MakeOr(b1, b2));
+        }
+
         private BitmapImage _image;
         public BitmapImage Image
         {
@@ -66,7 +86,6 @@ namespace Photoshop
             }
         }
 
-
         private void ChangeToGrayScale()
         {
             ImageManipulator.ApplyGrayScaleTo(_originalBitmap);
@@ -75,7 +94,7 @@ namespace Photoshop
 
         private void ApplyCorrelation()
         {
-            ImageManipulator.ApplyCorrelation(_originalBitmap);
+            ImageManipulator.ApplyCorrelationTo(_originalBitmap);
             this.Image = BitmapToImageSource(_originalBitmap);
         }
 

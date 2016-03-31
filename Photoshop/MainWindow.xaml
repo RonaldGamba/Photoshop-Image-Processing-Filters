@@ -17,6 +17,8 @@
                           Command="{Binding ChangeToGrayScaleCommand}"/>
                 <MenuItem Header="Correlação"
                           Command="{Binding ApplyCorrelationCommand}"/>
+                <MenuItem Header="Or"
+                          Command="{Binding MakeOrCommand}"/>
             </MenuItem>
         </Menu>
         <Grid Grid.Row="1">
