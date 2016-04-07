@@ -55,24 +55,43 @@ namespace Photoshop
             }
         }
 
-        private RelayCommand _makeOrCommand;
-        public RelayCommand MakeOrCommand
+        private RelayCommand _bitwiseOrOperationCommand;
+        public RelayCommand BitwiseOrOperationCommand
         {
             get
             {
-                if (_makeOrCommand == null)
-                    _makeOrCommand = new RelayCommand(MakeOr);
+                
+                if (_bitwiseOrOperationCommand == null)
+                    _bitwiseOrOperationCommand = new RelayCommand(BitwiseOrOperation);
 
-                return _makeOrCommand;
+                return _bitwiseOrOperationCommand;
             }
         }
 
-        private void MakeOr()
+        private RelayCommand _bitwiseXorOperationCommand;
+        public RelayCommand BitwiseXorOperationCommand
         {
-            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\empty_circle.jpg");
-            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
+            get
+            {
 
-            this.Image = this.BitmapToImageSource(ImageManipulator.MakeOr(b1, b2));
+                if (_bitwiseXorOperationCommand == null)
+                    _bitwiseXorOperationCommand = new RelayCommand(BitwiseXorOperation);
+
+                return _bitwiseXorOperationCommand;
+            }
+        }
+
+        private RelayCommand _bitwiseAndOperationCommand;
+        public RelayCommand BitwiseAndOperationCommand
+        {
+            get
+            {
+
+                if (_bitwiseAndOperationCommand == null)
+                    _bitwiseAndOperationCommand = new RelayCommand(BitwiseAndOperation);
+
+                return _bitwiseAndOperationCommand;
+            }
         }
 
         private BitmapImage _image;
@@ -115,6 +134,30 @@ namespace Photoshop
         }
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
+
+        private void BitwiseOrOperation()
+        {
+            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
+            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\circle.jpg");
+
+            this.Image = this.BitmapToImageSource(ImageManipulator.BitwiseOperation(b1, b2, (v1, v2) => (byte)(v1 | v2)));
+        }
+
+        private void BitwiseAndOperation()
+        {
+            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
+            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\circle.jpg");
+
+            this.Image = this.BitmapToImageSource(ImageManipulator.BitwiseOperation(b1, b2, (v1, v2) => (byte)(v1 & v2)));
+        }
+
+        private void BitwiseXorOperation()
+        {
+            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
+            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\circle.jpg");
+
+            this.Image = this.BitmapToImageSource(ImageManipulator.BitwiseOperation(b1, b2, (v1, v2) => (byte)(v1 ^ v2)));
+        }
     }
 
     public class RelayCommand : ICommand

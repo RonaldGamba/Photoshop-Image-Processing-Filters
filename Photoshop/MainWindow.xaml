@@ -18,7 +18,11 @@
                 <MenuItem Header="Correlação"
                           Command="{Binding ApplyCorrelationCommand}"/>
                 <MenuItem Header="Or"
-                          Command="{Binding MakeOrCommand}"/>
+                          Command="{Binding BitwiseOrOperationCommand}"/>
+                <MenuItem Header="Xor"
+                          Command="{Binding BitwiseXorOperationCommand}"/>
+                <MenuItem Header="And"
+                          Command="{Binding BitwiseAndOperationCommand}"/>
             </MenuItem>
         </Menu>
         <Grid Grid.Row="1">
