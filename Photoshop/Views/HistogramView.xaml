@@ -1,0 +1,18 @@
+﻿<Window x:Class="Photoshop.Views.HistogramView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="clr-namespace:Photoshop.ViewModels"
+        xmlns:local="clr-namespace:Photoshop.Views"
+        xmlns:oxy="http://oxyplot.org/wpf"
+        mc:Ignorable="d"
+        Title="HistogramView" Height="300" Width="300">
+    <Grid>
+        <oxy:Plot Title="Histograma">
+            <oxy:Plot.Series>
+                <oxy:LineSeries ItemsSource="{Binding Data}"/>
+            </oxy:Plot.Series>
+        </oxy:Plot>
+    </Grid>
+</Window>

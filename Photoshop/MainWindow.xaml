@@ -1,32 +1,115 @@
 ﻿<Window x:Class="Photoshop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MainWindow" Height="450" Width="500">
+        xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
+        Title="MainWindow"
+        Width="900"
+        Height="600">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Menu Height="25">
             <MenuItem Header="Arquivo">
-                <MenuItem Header="Abrir"
-                          Command="{Binding OpenDialogCommand}"/>
+                <MenuItem Command="{Binding LoadImage1Command}" Header="Carregar imagem 1" />
+                <MenuItem Command="{Binding LoadImage2Command}" Header="Carregar imagem 2" />
             </MenuItem>
             <MenuItem Header="Filtro">
-                <MenuItem Header="Cinza"
-                          Command="{Binding ChangeToGrayScaleCommand}"/>
-                <MenuItem Header="Correlação"
-                          Command="{Binding ApplyCorrelationCommand}"/>
-                <MenuItem Header="Or"
-                          Command="{Binding BitwiseOrOperationCommand}"/>
-                <MenuItem Header="Xor"
-                          Command="{Binding BitwiseXorOperationCommand}"/>
-                <MenuItem Header="And"
-                          Command="{Binding BitwiseAndOperationCommand}"/>
+                <MenuItem Command="{Binding ChangeToGrayScaleCommand}" Header="Cinza" />
+                <MenuItem Command="{Binding ApplyCorrelationCommand}" Header="Correlação" />
+                <MenuItem Command="{Binding BitwiseOrOperationCommand}" Header="Or" />
+                <MenuItem Command="{Binding BitwiseXorOperationCommand}" Header="Xor" />
+                <MenuItem Command="{Binding BitwiseAndOperationCommand}" Header="And" />
+                <MenuItem Command="{Binding ShowHistogramCommand}" Header="Histograma" />
             </MenuItem>
         </Menu>
-        <Grid Grid.Row="1">
-            <Image Source="{Binding Image}"/>
+        <Grid Grid.Row="1" Margin="0.5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="5*" />
+                <RowDefinition Height="5" />
+                <RowDefinition Height="5*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="5*" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="5*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Background="Transparent"
+                       FontSize="45"
+                       Foreground="Gray"
+                       Text="Imagem 1">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Image1}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="MouseDown">
+                        <i:InvokeCommandAction Command="{Binding LoadImage1Command}" />
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+            </TextBlock>
+
+            <Image IsHitTestVisible="true" Source="{Binding Image}" />
+            <GridSplitter Grid.RowSpan="3"
+                          Grid.Column="1"
+                          Width="5"
+                          HorizontalAlignment="Stretch" />
+            <TextBlock Grid.RowSpan="3"
+                       Grid.Column="2"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="45"
+                       Foreground="Gray"
+                       Text="Resultado">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ImageResult}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <Image Grid.RowSpan="3"
+                   Grid.Column="2"
+                   Source="{Binding ResultImage}" />
+            <GridSplitter Grid.Row="1"
+                          Height="5"
+                          HorizontalAlignment="Stretch" />
+
+            <TextBlock Grid.Row="2"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="45"
+                       Foreground="Gray"
+                       Text="Imagem 2">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Image2}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+                   <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="MouseDown">
+                        <i:InvokeCommandAction Command="{Binding LoadImage2Command}"/>
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+            </TextBlock>
+
+            <Image Grid.Row="2" Source="{Binding Image2}" />
         </Grid>
     </Grid>
 </Window>

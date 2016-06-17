@@ -16,18 +16,7 @@ namespace Photoshop.Engine
         {
             var imageStructure = new ImageStructure(image);
 
-            int i;
-
-            if(image.RawFormat.Guid == ImageFormat.Jpeg.Guid)
-            {
-                i = 0;
-            }
-            else
-            {
-                i = 8;
-            }
-
-            for (i = 0; i < imageStructure.Pixels.Length; i += 3)
+            for (int i = 0; i < imageStructure.Pixels.Length - 3; i += 3)
             {
                 var r = imageStructure.Pixels[i];
                 var g = imageStructure.Pixels[i + 1];
@@ -59,20 +48,37 @@ namespace Photoshop.Engine
             imageStructure.ReprocessImage();
         }
 
+        public static int[] GetImageHistogram(Bitmap image)
+        {
+            var grayIntensitivity = new int[256];
+            var imageStructure = new ImageStructure(image);
+            var arrayPixel = TransformArrayByteToColorRepresentationMatrix(imageStructure.Pixels, image.Width, image.Height);
+
+            for (int i = 0; i < imageStructure.Pixels.Length - 3; i += 3)
+            {
+                var r = imageStructure.Pixels[i];
+                var g = imageStructure.Pixels[i + 1];
+                var b = imageStructure.Pixels[i + 2];
+
+                var grayScale = (byte)((r + g + b) / 3);
+                grayIntensitivity[grayScale]++;
+            }
+
+            return grayIntensitivity;
+        }
+
         public static Bitmap BitwiseOperation(Bitmap b1, Bitmap b2, Func<int, int, byte> operation)
         {
-            if (b1.Width != b2.Width || b1.Height != b2.Height)
-                throw new ArgumentException("The size of the images must be the same.");
 
             var b1Bytes = GetBytes(b1);
             var b2Bytes = GetBytes(b2);
-            var result = new byte[b1Bytes.Length];
+            var result = new byte[Math.Min(b1Bytes.Count(), b2Bytes.Count())];
 
-            for (int i = 0; i < b1Bytes.Length; i++)
+            for (int i = 0; i < result.Length; i++)
             {
                 var v1 = (int)b1Bytes[i];
                 var v2 = (int)b2Bytes[i];
-                result[i] = operation(v1,v2);
+                result[i] = operation(v1, v2);
             }
 
             var imageStructure = new ImageStructure(b1);
@@ -80,21 +86,13 @@ namespace Photoshop.Engine
             imageStructure.ReprocessImage();
 
             return b1;
+
         }
 
         private static byte[] GetBytes(Bitmap image)
         {
-            var rectangleToLock = new Rectangle(0, 0, image.Width, image.Height);
-            var bmpData = image.LockBits(rectangleToLock, System.Drawing.Imaging.ImageLockMode.ReadWrite, image.PixelFormat);
-
-            var adressFirstLine = bmpData.Scan0;
-
-            var pixelsLength = Math.Abs(bmpData.Stride) * image.Height;
-            var rgbValues = new byte[pixelsLength];
-
-            Marshal.Copy(adressFirstLine, rgbValues, 0, pixelsLength);
-            image.UnlockBits(bmpData);
-            return rgbValues;
+            var imageStructure = new ImageStructure(image);
+            return imageStructure.Pixels;
         }
 
         public static Pixel[,] TransformArrayByteToColorRepresentationMatrix(byte[] array, int width, int height)
@@ -183,88 +181,6 @@ namespace Photoshop.Engine
                     matrix[i, j] = new Pixel(newR, newG, newB);
                 }
             }
-        }
-    }
-
-    public class ImageStructure
-    {
-        private IntPtr _beginImagePointer;
-        private byte[] _pixels;
-        private Bitmap _image;
-
-        public ImageStructure(Bitmap image)
-        {
-            _image = image;
-
-            var rectangleToLock = new Rectangle(0, 0, image.Width, image.Height);
-            var bmpData = image.LockBits(rectangleToLock, ImageLockMode.ReadWrite, image.PixelFormat);
-            var pixelsLength = Math.Abs(bmpData.Stride) * image.Height;
-
-            _beginImagePointer = bmpData.Scan0;
-            _pixels = new byte[pixelsLength];
-
-            Marshal.Copy(_beginImagePointer, _pixels, 0, pixelsLength);
-            image.UnlockBits(bmpData);
-        }
-                
-        public void ReprocessImage()
-        {
-            Marshal.Copy(_pixels, 0, _beginImagePointer, _pixels.Length);
-        }
-
-        public byte[] Pixels
-        {
-            get
-            {
-                return _pixels;
-            }
-            set
-            {
-                _pixels = value;
-            }
-        }
-    }
-
-    public struct Pixel
-    {
-        private readonly double _r;
-        private readonly double _g;
-        private readonly double _b;
-
-        public Pixel(double r, double g, double b)
-        {
-            _r = r;
-            _g = g;
-            _b = b;
-        }
-
-        public double R
-        {
-            get
-            {
-                return _r;
-            }
-        }
-
-        public double G
-        {
-            get
-            {
-                return _g;
-            }
-        }
-
-        public double B
-        {
-            get
-            {
-                return _b;
-            }
-        }
-
-        public override string ToString()
-        {
-            return string.Format("R:{0} - G:{1} - B:{2}", _r, _g, _b);
         }
     }
 }

@@ -1,5 +1,7 @@
 ﻿using Microsoft.Win32;
 using Photoshop.Engine;
+using Photoshop.ViewModels;
+using Photoshop.Views;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,23 +19,50 @@ namespace Photoshop
 {
     public class MainWindowViewModel : INotifyPropertyChanged
     {
-        private Bitmap _originalBitmap;
+        private Bitmap _originalImage1;
+        private Bitmap _originalImage2;
 
-        private RelayCommand _openDialogCommand;
-        public RelayCommand OpenDialogCommand
+        private RelayCommand _loadImage1Command;
+        public RelayCommand LoadImage1Command
         {
             get
             {
-                if (_openDialogCommand == null)
-                    _openDialogCommand = new RelayCommand(() =>
+                if (_loadImage1Command == null)
+                    _loadImage1Command = new RelayCommand(() =>
                     {
                         var fileDialog = new OpenFileDialog();
-                        fileDialog.ShowDialog();
-                        _originalBitmap = new Bitmap(fileDialog.FileName);
-                        this.Image = BitmapToImageSource(new Bitmap(_originalBitmap));
+                        var result = fileDialog.ShowDialog();
+
+                        if (result.HasValue && result.Value)
+                        {
+                            _originalImage1 = new Bitmap(fileDialog.FileName);
+                            Image = BitmapHelper.BitmapToBitmapImage(_originalImage1);
+                        }
                     });
 
-                return _openDialogCommand;
+                return _loadImage1Command;
+            }
+        }
+
+        private RelayCommand _loadImage2Command;
+        public RelayCommand LoadImage2Command
+        {
+            get
+            {
+                if (_loadImage2Command == null)
+                    _loadImage2Command = new RelayCommand(() =>
+                    {
+                        var fileDialog = new OpenFileDialog();
+                        var result = fileDialog.ShowDialog();
+
+                        if (result.HasValue && result.Value)
+                        {
+                            _originalImage2 = new Bitmap(fileDialog.FileName);
+                            Image2 = BitmapHelper.BitmapToBitmapImage(_originalImage2);
+                        }
+                    });
+
+                return _loadImage2Command;
             }
         }
 
@@ -60,7 +89,7 @@ namespace Photoshop
         {
             get
             {
-                
+
                 if (_bitwiseOrOperationCommand == null)
                     _bitwiseOrOperationCommand = new RelayCommand(BitwiseOrOperation);
 
@@ -94,6 +123,25 @@ namespace Photoshop
             }
         }
 
+        private RelayCommand _showHistogramCommand;
+        public RelayCommand ShowHistogramCommand
+        {
+            get
+            {
+                if (_showHistogramCommand == null)
+                    _showHistogramCommand = new RelayCommand(ShowHistogram);
+
+                return _showHistogramCommand;
+            }
+        }
+
+        private void ShowHistogram()
+        {
+            var histogramView = new HistogramView();
+            histogramView.DataContext = new HistogramViewModel(ImageManipulator.GetImageHistogram(_originalImage1));
+            histogramView.ShowDialog();
+        }
+
         private BitmapImage _image;
         public BitmapImage Image
         {
@@ -105,58 +153,67 @@ namespace Photoshop
             }
         }
 
+        private BitmapImage _image2;
+        public BitmapImage Image2
+        {
+            get { return _image2; }
+            set
+            {
+                _image2 = value;
+                PropertyChanged(this, new PropertyChangedEventArgs("Image2"));
+            }
+        }
+
+        private BitmapImage _resultImage;
+        public BitmapImage ResultImage
+        {
+            get
+            {
+                return _resultImage;
+            }
+            set
+            {
+                _resultImage = value;
+                PropertyChanged(this, new PropertyChangedEventArgs("ResultImage"));
+            }
+        }
+
         private void ChangeToGrayScale()
         {
-            ImageManipulator.ApplyGrayScaleTo(_originalBitmap);
-            this.Image = BitmapToImageSource(_originalBitmap);
+            ImageManipulator.ApplyGrayScaleTo(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(_originalImage1);
         }
 
         private void ApplyCorrelation()
         {
-            ImageManipulator.ApplyCorrelationTo(_originalBitmap);
-            this.Image = BitmapToImageSource(_originalBitmap);
-        }
-
-        BitmapImage BitmapToImageSource(Bitmap bitmap)
-        {
-            using (MemoryStream memory = new MemoryStream())
-            {
-                bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
-                memory.Position = 0;
-                BitmapImage bitmapimage = new BitmapImage();
-                bitmapimage.BeginInit();
-                bitmapimage.StreamSource = memory;
-                bitmapimage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapimage.EndInit();
-
-                return bitmapimage;
-            }
+            ImageManipulator.ApplyCorrelationTo(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(_originalImage1);
         }
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
         private void BitwiseOrOperation()
         {
-            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
-            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\circle.jpg");
+            var img1 = _originalImage1.Clone() as Bitmap;
+            var img2 = _originalImage2.Clone() as Bitmap;
 
-            this.Image = this.BitmapToImageSource(ImageManipulator.BitwiseOperation(b1, b2, (v1, v2) => (byte)(v1 | v2)));
+            ResultImage = BitmapHelper.BitmapToBitmapImage(ImageManipulator.BitwiseOperation(img1, img2, (v1, v2) => (byte)(v1 | v2)));
         }
 
         private void BitwiseAndOperation()
         {
-            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
-            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\circle.jpg");
+            var img1 = _originalImage1.Clone() as Bitmap;
+            var img2 = _originalImage2.Clone() as Bitmap;
 
-            this.Image = this.BitmapToImageSource(ImageManipulator.BitwiseOperation(b1, b2, (v1, v2) => (byte)(v1 & v2)));
+            ResultImage = BitmapHelper.BitmapToBitmapImage(ImageManipulator.BitwiseOperation(img1, img2, (v1, v2) => (byte)(v1 & v2)));
         }
 
         private void BitwiseXorOperation()
         {
-            var b1 = new Bitmap(@"C:\Users\UCS\Desktop\square.jpg");
-            var b2 = new Bitmap(@"C:\Users\UCS\Desktop\circle.jpg");
+            var img1 = _originalImage1.Clone() as Bitmap;
+            var img2 = _originalImage2.Clone() as Bitmap;
 
-            this.Image = this.BitmapToImageSource(ImageManipulator.BitwiseOperation(b1, b2, (v1, v2) => (byte)(v1 ^ v2)));
+            ResultImage = BitmapHelper.BitmapToBitmapImage(ImageManipulator.BitwiseOperation(img1, img2, (v1, v2) => (byte)(v1 ^ v2)));
         }
     }
 
