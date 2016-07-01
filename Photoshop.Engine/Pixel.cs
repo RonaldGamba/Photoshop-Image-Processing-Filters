@@ -5,12 +5,14 @@
         private readonly double _r;
         private readonly double _g;
         private readonly double _b;
+        private readonly double _a;
 
-        public Pixel(double r, double g, double b)
+        public Pixel(double r, double g, double b, double a)
         {
             _r = r;
             _g = g;
             _b = b;
+            _a = a;
         }
 
         public double R
@@ -34,6 +36,14 @@
             get
             {
                 return _b;
+            }
+        }
+
+        public double A
+        {
+            get
+            {
+                return _a;
             }
         }
 

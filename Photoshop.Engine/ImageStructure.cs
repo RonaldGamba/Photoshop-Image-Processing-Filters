@@ -7,43 +7,21 @@ namespace Photoshop.Engine
 {
     public class ImageStructure
     {
-        private IntPtr _beginImagePointer;
         private byte[] _pixels;
-        private Bitmap _image;
 
-        public ImageStructure(Bitmap image)
+        public ImageStructure(Bitmap sourceBitmap)
         {
-            _image = image;
+            var bmpData = sourceBitmap.LockBits(new Rectangle(0, 0,
+                                    sourceBitmap.Width, sourceBitmap.Height),
+                                    ImageLockMode.ReadOnly,
+                                    PixelFormat.Format32bppArgb);
 
-            var rectangleToLock = new Rectangle(0, 0, image.Width, image.Height);
-            var bmpData = image.LockBits(rectangleToLock, ImageLockMode.ReadWrite, image.PixelFormat);
-            _beginImagePointer = bmpData.Scan0;
-            _pixels = RemoveStridePadding(image);
-
-            Marshal.Copy(_beginImagePointer, _pixels, 0, _pixels.Length);
-            image.UnlockBits(bmpData);
+            _pixels = new byte[bmpData.Stride * bmpData.Height];
+            Marshal.Copy(bmpData.Scan0, _pixels, 0, _pixels.Length);
+            sourceBitmap.UnlockBits(bmpData);
         }
 
-        private byte[] RemoveStridePadding(Bitmap image)
-        {
-            var bytesPerPixel = System.Drawing.Bitmap.GetPixelFormatSize(image.PixelFormat) / 8;
-            var pixels = new byte[image.Width * image.Height * bytesPerPixel];
-
-            for (int i = 0; i < image.Height; i++)
-            {
-                var memPos = (IntPtr)((long)_beginImagePointer + i * image.Width * bytesPerPixel);
-                Marshal.Copy(memPos, pixels, i * image.Width * bytesPerPixel, image.Width * bytesPerPixel);
-            }
-
-            return pixels;
-        }
-
-        public void ReprocessImage()
-        {
-            Marshal.Copy(_pixels, 0, _beginImagePointer, _pixels.Length);
-        }
-
-        public byte[] Pixels
+        public byte[] BufferPixels
         {
             get
             {

@@ -66,7 +66,7 @@ namespace Photoshop.Engine.Tests
                                         {1 ,1 ,1 } };
 
             //Act
-            ImageManipulator.ApplyCorrelationOnMatrix(matrix, filter);
+            //ImageManipulator.ApplyCorrelation(matrix, filter);
 
             //Assert
             Assert.AreEqual(matrix[1, 1].R, 45);

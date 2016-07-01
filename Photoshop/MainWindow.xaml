@@ -22,6 +22,9 @@
                 <MenuItem Command="{Binding BitwiseXorOperationCommand}" Header="Xor" />
                 <MenuItem Command="{Binding BitwiseAndOperationCommand}" Header="And" />
                 <MenuItem Command="{Binding ShowHistogramCommand}" Header="Histograma" />
+                <MenuItem Command="{Binding ApplyLowPassFilterCommand}" Header="Passa-baixa" />
+                <MenuItem Command="{Binding ApplyHighPassFilterCommand}" Header="Passa-alta" />
+                
             </MenuItem>
         </Menu>
         <Grid Grid.Row="1" Margin="0.5">

@@ -12,53 +12,37 @@ namespace Photoshop.Engine
 {
     public static class ImageManipulator
     {
-        public static void ApplyGrayScaleTo(Bitmap image)
+        public static Bitmap ApplyGrayScaleTo(Bitmap image)
         {
             var imageStructure = new ImageStructure(image);
 
-            for (int i = 0; i < imageStructure.Pixels.Length - 3; i += 3)
+            for (int i = 0; i < imageStructure.BufferPixels.Length - 4; i += 4)
             {
-                var r = imageStructure.Pixels[i];
-                var g = imageStructure.Pixels[i + 1];
-                var b = imageStructure.Pixels[i + 2];
+                var r = imageStructure.BufferPixels[i];
+                var g = imageStructure.BufferPixels[i + 1];
+                var b = imageStructure.BufferPixels[i + 2];
 
                 var gray = (byte)((r + g + b) / 3);
 
-                imageStructure.Pixels[i] = gray;
-                imageStructure.Pixels[i + 1] = gray;
-                imageStructure.Pixels[i + 2] = gray;
+                imageStructure.BufferPixels[i] = gray;
+                imageStructure.BufferPixels[i + 1] = gray;
+                imageStructure.BufferPixels[i + 2] = gray;
             }
 
-            imageStructure.ReprocessImage();
+            return BitmapHelper.CreateNewBitmpFrom(image, imageStructure.BufferPixels);
         }
 
-        public static void ApplyCorrelationTo(Bitmap image)
-        {
-            var imageStructure = new ImageStructure(image);
-
-            var rgbMatrix = TransformArrayByteToColorRepresentationMatrix(imageStructure.Pixels, image.Width, image.Height);
-
-            var filter = new float[,] { { 1/9f ,1/9f ,1/9f},
-                                         {1/9f ,1/9f ,1/9f },
-                                         {1/9f ,1/9f ,1/9f } };
-
-            ApplyCorrelationOnMatrix(rgbMatrix, filter);
-            var result = PixelMatrixToArrayByte(rgbMatrix, imageStructure.Pixels.Length);
-            imageStructure.Pixels = result;
-            imageStructure.ReprocessImage();
-        }
-
-        public static int[] GetImageHistogram(Bitmap image)
+        public static int[] GenerateImageHistogram(Bitmap image)
         {
             var grayIntensitivity = new int[256];
             var imageStructure = new ImageStructure(image);
-            var arrayPixel = TransformArrayByteToColorRepresentationMatrix(imageStructure.Pixels, image.Width, image.Height);
+            var arrayPixel = TransformArrayByteToColorRepresentationMatrix(imageStructure.BufferPixels, image.Width, image.Height);
 
-            for (int i = 0; i < imageStructure.Pixels.Length - 3; i += 3)
+            for (int i = 0; i < imageStructure.BufferPixels.Length - 3; i += 3)
             {
-                var r = imageStructure.Pixels[i];
-                var g = imageStructure.Pixels[i + 1];
-                var b = imageStructure.Pixels[i + 2];
+                var r = imageStructure.BufferPixels[i];
+                var g = imageStructure.BufferPixels[i + 1];
+                var b = imageStructure.BufferPixels[i + 2];
 
                 var grayScale = (byte)((r + g + b) / 3);
                 grayIntensitivity[grayScale]++;
@@ -82,8 +66,7 @@ namespace Photoshop.Engine
             }
 
             var imageStructure = new ImageStructure(b1);
-            imageStructure.Pixels = result;
-            imageStructure.ReprocessImage();
+            imageStructure.BufferPixels = result;
 
             return b1;
 
@@ -92,7 +75,7 @@ namespace Photoshop.Engine
         private static byte[] GetBytes(Bitmap image)
         {
             var imageStructure = new ImageStructure(image);
-            return imageStructure.Pixels;
+            return imageStructure.BufferPixels;
         }
 
         public static Pixel[,] TransformArrayByteToColorRepresentationMatrix(byte[] array, int width, int height)
@@ -107,7 +90,8 @@ namespace Photoshop.Engine
                     var r = array[positionOnArray++];
                     var g = array[positionOnArray++];
                     var b = array[positionOnArray++];
-                    matrix[i, j] = new Pixel(r, g, b);
+                    var a = array[positionOnArray++];
+                    matrix[i, j] = new Pixel(r, g, b, a);
                 }
             }
 
@@ -128,13 +112,14 @@ namespace Photoshop.Engine
                     bytes[arrayBytePosition++] = (byte)matrix[i, j].R;
                     bytes[arrayBytePosition++] = (byte)matrix[i, j].G;
                     bytes[arrayBytePosition++] = (byte)matrix[i, j].B;
+                    bytes[arrayBytePosition++] = (byte)matrix[i, j].A;
                 }
             }
 
             return bytes;
         }
 
-        public static void ApplyCorrelationOnMatrix(Pixel[,] matrix,
+        public static void ApplyCorrelation(Pixel[,] matrix,
                                                     float[,] filter)
         {
             var rows = matrix.GetLength(0);
@@ -178,9 +163,105 @@ namespace Photoshop.Engine
                     newB += (matrix[i + 1, j].B * filter[2, 1]);
                     newB += (matrix[i + 1, j + 1].B * filter[2, 2]);
 
-                    matrix[i, j] = new Pixel(newR, newG, newB);
+                    newR = newR > 255 ? 255 : newR;
+                    newR = newR < 0 ? 0 : newR;
+
+                    newG = newG > 255 ? 255 : newG;
+                    newG = newG < 0 ? 0 : newG;
+
+                    newB = newB > 255 ? 255 : newB;
+                    newB = newB < 0 ? 0 : newB;
+
+                    matrix[i, j] = new Pixel(newR, newG, newB, 255);
                 }
             }
+        }
+
+        public static void ApplyConvultion(Pixel[,] matrix,
+                                           float[,] filter)
+        {
+            var rows = matrix.GetLength(0);
+            var columns = matrix.GetLength(1);
+
+            for (int i = 1; i < rows - 1; i++)
+            {
+                for (int j = 1; j < columns - 1; j++)
+                {
+                    double newR = 0;
+                    double newG = 0;
+                    double newB = 0;
+
+                    newR += (matrix[i - 1, j - 1].R * filter[2, 2]);
+                    newR += (matrix[i - 1, j].R * filter[2, 1]);
+                    newR += (matrix[i - 1, j + 1].R * filter[2, 0]);
+                    newR += (matrix[i, j - 1].R * filter[1, 2]);
+                    newR += (matrix[i, j].R * filter[1, 1]);
+                    newR += (matrix[i, j + 1].R * filter[1, 0]);
+                    newR += (matrix[i + 1, j - 1].R * filter[0, 2]);
+                    newR += (matrix[i + 1, j].R * filter[0, 1]);
+                    newR += (matrix[i + 1, j + 1].R * filter[0, 0]);
+
+                    newG += (matrix[i - 1, j - 1].G * filter[2, 2]);
+                    newG += (matrix[i - 1, j].G * filter[2, 1]);
+                    newG += (matrix[i - 1, j + 1].G * filter[2, 0]);
+                    newG += (matrix[i, j - 1].G * filter[1, 2]);
+                    newG += (matrix[i, j].G * filter[1, 1]);
+                    newG += (matrix[i, j + 1].G * filter[1, 0]);
+                    newG += (matrix[i + 1, j - 1].G * filter[0, 2]);
+                    newG += (matrix[i + 1, j].G * filter[0, 1]);
+                    newG += (matrix[i + 1, j + 1].G * filter[0, 0]);
+
+                    newB += (matrix[i - 1, j - 1].B * filter[2, 2]);
+                    newB += (matrix[i - 1, j].B * filter[2, 1]);
+                    newB += (matrix[i - 1, j + 1].B * filter[2, 0]);
+                    newB += (matrix[i, j - 1].B * filter[1, 2]);
+                    newB += (matrix[i, j].B * filter[1, 1]);
+                    newB += (matrix[i, j + 1].B * filter[1, 0]);
+                    newB += (matrix[i + 1, j - 1].B * filter[0, 2]);
+                    newB += (matrix[i + 1, j].B * filter[0, 1]);
+                    newB += (matrix[i + 1, j + 1].B * filter[0, 0]);
+
+                    newR = newR > 255 ? 255 : newR;
+                    newR = newR < 0 ? 0 : newR;
+
+                    newG = newG > 255 ? 255 : newG;
+                    newG = newG < 0 ? 0 : newG;
+
+                    newB = newB > 255 ? 255 : newB;
+                    newB = newB < 0 ? 0 : newB;
+
+                    matrix[i, j] = new Pixel(newR, newG, newB, 255);
+                }
+            }
+        }
+
+        public static void ApplyHighPassFilter(Bitmap image)
+        {
+            var imageStructure = new ImageStructure(image);
+            var rgbMatrix = TransformArrayByteToColorRepresentationMatrix(imageStructure.BufferPixels, image.Width, image.Height);
+
+            var filter = new float[,]
+                { { -1/9f, -1/9f, -1/9f,  },
+                  { -1/9f, -1/9f, -1/9f,  },
+                  { -1/9f, -1/9f, -1/9f,  }, };
+
+            ApplyConvultion(rgbMatrix, filter);
+            var result = PixelMatrixToArrayByte(rgbMatrix, imageStructure.BufferPixels.Length);
+            imageStructure.BufferPixels = result;
+        }
+
+        public static Bitmap ApplyLowPassFilter(Bitmap sourceBitmap)
+        {
+            var imageStructure = new ImageStructure(sourceBitmap);
+            var rgbMatrix = TransformArrayByteToColorRepresentationMatrix(imageStructure.BufferPixels, sourceBitmap.Width, sourceBitmap.Height);
+
+            var filter = new float[,] { { 1/9f ,1/9f ,1/9f},
+                                         {1/9f ,1/9f ,1/9f },
+                                         {1/9f ,1/9f ,1/9f } };
+
+            ApplyCorrelation(rgbMatrix, filter);
+            var resultBuffer = PixelMatrixToArrayByte(rgbMatrix, imageStructure.BufferPixels.Length);
+            return BitmapHelper.CreateNewBitmpFrom(sourceBitmap, resultBuffer);
         }
     }
 }

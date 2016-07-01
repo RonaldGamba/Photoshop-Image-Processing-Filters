@@ -36,7 +36,7 @@ namespace Photoshop
                         if (result.HasValue && result.Value)
                         {
                             _originalImage1 = new Bitmap(fileDialog.FileName);
-                            Image = BitmapHelper.BitmapToBitmapImage(_originalImage1);
+                            Image = BitmapHelper.BitmapToBitmapImage(BitmapHelper.Fix(_originalImage1));
                         }
                     });
 
@@ -58,7 +58,7 @@ namespace Photoshop
                         if (result.HasValue && result.Value)
                         {
                             _originalImage2 = new Bitmap(fileDialog.FileName);
-                            Image2 = BitmapHelper.BitmapToBitmapImage(_originalImage2);
+                            Image2 = BitmapHelper.BitmapToBitmapImage(BitmapHelper.Fix(_originalImage2));
                         }
                     });
 
@@ -75,12 +75,21 @@ namespace Photoshop
             }
         }
 
-        private RelayCommand _applyCorrelationCommand;
-        public RelayCommand ApplyCorrelationCommand
+        private RelayCommand _applyLowPassFilterCommand;
+        public RelayCommand ApplyLowPassFilterCommand
         {
             get
             {
-                return _applyCorrelationCommand ?? (_applyCorrelationCommand = new RelayCommand(ApplyCorrelation));
+                return _applyLowPassFilterCommand ?? (_applyLowPassFilterCommand = new RelayCommand(ApplyLowPassFilter));
+            }
+        }
+
+        private RelayCommand _applyHighPassFilterCommand;
+        public RelayCommand ApplyHighPassFilterCommand
+        {
+            get
+            {
+                return _applyHighPassFilterCommand ?? (_applyHighPassFilterCommand = new RelayCommand(ApplyHighPassFilter));
             }
         }
 
@@ -138,7 +147,7 @@ namespace Photoshop
         private void ShowHistogram()
         {
             var histogramView = new HistogramView();
-            histogramView.DataContext = new HistogramViewModel(ImageManipulator.GetImageHistogram(_originalImage1));
+            histogramView.DataContext = new HistogramViewModel(ImageManipulator.GenerateImageHistogram(_originalImage1));
             histogramView.ShowDialog();
         }
 
@@ -180,13 +189,19 @@ namespace Photoshop
 
         private void ChangeToGrayScale()
         {
-            ImageManipulator.ApplyGrayScaleTo(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(_originalImage1);
+            var result = ImageManipulator.ApplyGrayScaleTo(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+        }
+        
+        private void ApplyLowPassFilter()
+        {
+            var bitmapResult = ImageManipulator.ApplyLowPassFilter(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(bitmapResult);
         }
 
-        private void ApplyCorrelation()
+        private void ApplyHighPassFilter()
         {
-            ImageManipulator.ApplyCorrelationTo(_originalImage1);
+            ImageManipulator.ApplyHighPassFilter(_originalImage1);
             ResultImage = BitmapHelper.BitmapToBitmapImage(_originalImage1);
         }
 
