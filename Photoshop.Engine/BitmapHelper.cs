@@ -38,7 +38,7 @@ namespace Photoshop.Engine
             }
         }
 
-        public static Bitmap CreateNewBitmpFrom(Bitmap from, byte[] buffer)
+        public static Bitmap CreateNewBitmapFrom(Bitmap from, byte[] buffer)
         {
             var resultBitmap = new Bitmap(from.Width, from.Height);
 

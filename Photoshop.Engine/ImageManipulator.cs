@@ -12,6 +12,8 @@ namespace Photoshop.Engine
 {
     public static class ImageManipulator
     {
+        private static int BYTES_PER_PIXEL = 4;
+
         public static Bitmap ApplyGrayScaleTo(Bitmap image)
         {
             var imageStructure = new ImageStructure(image);
@@ -29,7 +31,7 @@ namespace Photoshop.Engine
                 imageStructure.BufferPixels[i + 2] = gray;
             }
 
-            return BitmapHelper.CreateNewBitmpFrom(image, imageStructure.BufferPixels);
+            return BitmapHelper.CreateNewBitmapFrom(image, imageStructure.BufferPixels);
         }
 
         public static int[] GenerateImageHistogram(Bitmap image)
@@ -119,149 +121,246 @@ namespace Photoshop.Engine
             return bytes;
         }
 
-        public static void ApplyCorrelation(Pixel[,] matrix,
-                                                    float[,] filter)
+        public static Bitmap ConvolutionFilter(Bitmap sourceBitmap, float[,] filter)
         {
-            var rows = matrix.GetLength(0);
-            var columns = matrix.GetLength(1);
+            BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
+                                     sourceBitmap.Width, sourceBitmap.Height),
+                                                       ImageLockMode.ReadOnly,
+                                                 PixelFormat.Format32bppArgb);
 
-            for (int i = 1; i < rows - 1; i++)
+            byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
+            byte[] resultBuffer = new byte[sourceData.Stride * sourceData.Height];
+
+            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
+            sourceBitmap.UnlockBits(sourceData);
+
+            int filterHeight = filter.GetLength(0);
+            int filterWidth = filter.GetLength(1);
+            int filterOffset = (filterWidth - 1) / 2;
+
+            for (int imageOffsetX = 1; imageOffsetX < sourceBitmap.Height - 1; imageOffsetX++)
             {
-                for (int j = 1; j < columns - 1; j++)
+                for (int imageOffsetY = 1; imageOffsetY < sourceBitmap.Width - 1; imageOffsetY++)
                 {
-                    double newR = 0;
-                    double newG = 0;
-                    double newB = 0;
+                    var centralPixelPos = (sourceData.Stride * imageOffsetX) + (imageOffsetY * 4);
 
-                    newR += (matrix[i - 1, j - 1].R * filter[0, 0]);
-                    newR += (matrix[i - 1, j].R * filter[0, 1]);
-                    newR += (matrix[i - 1, j + 1].R * filter[0, 2]);
-                    newR += (matrix[i, j - 1].R * filter[1, 0]);
-                    newR += (matrix[i, j].R * filter[1, 1]);
-                    newR += (matrix[i, j + 1].R * filter[1, 2]);
-                    newR += (matrix[i + 1, j - 1].R * filter[2, 0]);
-                    newR += (matrix[i + 1, j].R * filter[2, 1]);
-                    newR += (matrix[i + 1, j + 1].R * filter[2, 2]);
+                    var blue = 0d;
+                    var green = 0d;
+                    var red = 0d;
 
-                    newG += (matrix[i - 1, j - 1].G * filter[0, 0]);
-                    newG += (matrix[i - 1, j].G * filter[0, 1]);
-                    newG += (matrix[i - 1, j + 1].G * filter[0, 2]);
-                    newG += (matrix[i, j - 1].G * filter[1, 0]);
-                    newG += (matrix[i, j].G * filter[1, 1]);
-                    newG += (matrix[i, j + 1].G * filter[1, 2]);
-                    newG += (matrix[i + 1, j - 1].G * filter[2, 0]);
-                    newG += (matrix[i + 1, j].G * filter[2, 1]);
-                    newG += (matrix[i + 1, j + 1].G * filter[2, 2]);
+                    for (int filterX = -filterOffset; filterX <= filterOffset; filterX++)
+                    {
+                        for (int filterY = -filterOffset; filterY <= filterOffset; filterY++)
+                        {
+                            var currentPixelBasPos = (sourceData.Stride * (imageOffsetX + filterX)) + (filterY + imageOffsetY) * 4;
 
-                    newB += (matrix[i - 1, j - 1].B * filter[0, 0]);
-                    newB += (matrix[i - 1, j].B * filter[0, 1]);
-                    newB += (matrix[i - 1, j + 1].B * filter[0, 2]);
-                    newB += (matrix[i, j - 1].B * filter[1, 0]);
-                    newB += (matrix[i, j].B * filter[1, 1]);
-                    newB += (matrix[i, j + 1].B * filter[1, 2]);
-                    newB += (matrix[i + 1, j - 1].B * filter[2, 0]);
-                    newB += (matrix[i + 1, j].B * filter[2, 1]);
-                    newB += (matrix[i + 1, j + 1].B * filter[2, 2]);
+                            blue += pixelBuffer[currentPixelBasPos] * filter[filterX + filterOffset, filterY + filterOffset];
+                            green += pixelBuffer[currentPixelBasPos + 1] * filter[filterX + filterOffset, filterY + filterOffset];
+                            red += pixelBuffer[currentPixelBasPos + 2] * filter[filterX + filterOffset, filterY + filterOffset];
+                        }
+                    }
 
-                    newR = newR > 255 ? 255 : newR;
-                    newR = newR < 0 ? 0 : newR;
+                    if (blue > 255)
+                    { blue = 255; }
+                    else if (blue < 0)
+                    { blue = 0; }
 
-                    newG = newG > 255 ? 255 : newG;
-                    newG = newG < 0 ? 0 : newG;
+                    if (green > 255)
+                    { green = 255; }
+                    else if (green < 0)
+                    { green = 0; }
 
-                    newB = newB > 255 ? 255 : newB;
-                    newB = newB < 0 ? 0 : newB;
+                    if (red > 255)
+                    { red = 255; }
+                    else if (red < 0)
+                    { red = 0; }
 
-                    matrix[i, j] = new Pixel(newR, newG, newB, 255);
+                    resultBuffer[centralPixelPos] = (byte)blue;
+                    resultBuffer[centralPixelPos + 1] = (byte)green;
+                    resultBuffer[centralPixelPos + 2] = (byte)red;
+                    resultBuffer[centralPixelPos + 3] = 255;
                 }
             }
+
+            return BitmapHelper.CreateNewBitmapFrom(sourceBitmap, resultBuffer);
         }
 
-        public static void ApplyConvultion(Pixel[,] matrix,
-                                           float[,] filter)
+        public static Bitmap ConvolutionFilter(this Bitmap sourceBitmap,
+                                           float[,] xFilterMatrix,
+                                           float[,] yFilterMatrix,
+                                                 double factor = 1,
+                                                      int bias = 0,
+                                            bool grayscale = false)
         {
-            var rows = matrix.GetLength(0);
-            var columns = matrix.GetLength(1);
+            BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
+                                     sourceBitmap.Width, sourceBitmap.Height),
+                                                       ImageLockMode.ReadOnly,
+                                                  PixelFormat.Format32bppArgb);
 
-            for (int i = 1; i < rows - 1; i++)
+            byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
+            byte[] resultBuffer = new byte[sourceData.Stride * sourceData.Height];
+
+            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
+            sourceBitmap.UnlockBits(sourceData);
+
+            if (grayscale == true)
             {
-                for (int j = 1; j < columns - 1; j++)
+                float rgb = 0;
+
+                for (int k = 0; k < pixelBuffer.Length; k += 4)
                 {
-                    double newR = 0;
-                    double newG = 0;
-                    double newB = 0;
+                    rgb = pixelBuffer[k] * 0.11f;
+                    rgb += pixelBuffer[k + 1] * 0.59f;
+                    rgb += pixelBuffer[k + 2] * 0.3f;
 
-                    newR += (matrix[i - 1, j - 1].R * filter[2, 2]);
-                    newR += (matrix[i - 1, j].R * filter[2, 1]);
-                    newR += (matrix[i - 1, j + 1].R * filter[2, 0]);
-                    newR += (matrix[i, j - 1].R * filter[1, 2]);
-                    newR += (matrix[i, j].R * filter[1, 1]);
-                    newR += (matrix[i, j + 1].R * filter[1, 0]);
-                    newR += (matrix[i + 1, j - 1].R * filter[0, 2]);
-                    newR += (matrix[i + 1, j].R * filter[0, 1]);
-                    newR += (matrix[i + 1, j + 1].R * filter[0, 0]);
-
-                    newG += (matrix[i - 1, j - 1].G * filter[2, 2]);
-                    newG += (matrix[i - 1, j].G * filter[2, 1]);
-                    newG += (matrix[i - 1, j + 1].G * filter[2, 0]);
-                    newG += (matrix[i, j - 1].G * filter[1, 2]);
-                    newG += (matrix[i, j].G * filter[1, 1]);
-                    newG += (matrix[i, j + 1].G * filter[1, 0]);
-                    newG += (matrix[i + 1, j - 1].G * filter[0, 2]);
-                    newG += (matrix[i + 1, j].G * filter[0, 1]);
-                    newG += (matrix[i + 1, j + 1].G * filter[0, 0]);
-
-                    newB += (matrix[i - 1, j - 1].B * filter[2, 2]);
-                    newB += (matrix[i - 1, j].B * filter[2, 1]);
-                    newB += (matrix[i - 1, j + 1].B * filter[2, 0]);
-                    newB += (matrix[i, j - 1].B * filter[1, 2]);
-                    newB += (matrix[i, j].B * filter[1, 1]);
-                    newB += (matrix[i, j + 1].B * filter[1, 0]);
-                    newB += (matrix[i + 1, j - 1].B * filter[0, 2]);
-                    newB += (matrix[i + 1, j].B * filter[0, 1]);
-                    newB += (matrix[i + 1, j + 1].B * filter[0, 0]);
-
-                    newR = newR > 255 ? 255 : newR;
-                    newR = newR < 0 ? 0 : newR;
-
-                    newG = newG > 255 ? 255 : newG;
-                    newG = newG < 0 ? 0 : newG;
-
-                    newB = newB > 255 ? 255 : newB;
-                    newB = newB < 0 ? 0 : newB;
-
-                    matrix[i, j] = new Pixel(newR, newG, newB, 255);
+                    pixelBuffer[k] = (byte)rgb;
+                    pixelBuffer[k + 1] = pixelBuffer[k];
+                    pixelBuffer[k + 2] = pixelBuffer[k];
+                    pixelBuffer[k + 3] = 255;
                 }
             }
+
+            double blueX = 0.0;
+            double greenX = 0.0;
+            double redX = 0.0;
+
+            double blueY = 0.0;
+            double greenY = 0.0;
+            double redY = 0.0;
+
+            double blueTotal = 0.0;
+            double greenTotal = 0.0;
+            double redTotal = 0.0;
+
+            int filterOffset = 1;
+            int calcOffset = 0;
+
+            int byteOffset = 0;
+
+            for (int offsetY = filterOffset; offsetY <
+                sourceBitmap.Height - filterOffset; offsetY++)
+            {
+                for (int offsetX = filterOffset; offsetX <
+                    sourceBitmap.Width - filterOffset; offsetX++)
+                {
+                    blueX = greenX = redX = 0;
+                    blueY = greenY = redY = 0;
+
+                    blueTotal = greenTotal = redTotal = 0.0;
+
+                    byteOffset = offsetY *
+                                 sourceData.Stride +
+                                 offsetX * 4;
+
+                    for (int filterY = -filterOffset;
+                        filterY <= filterOffset; filterY++)
+                    {
+                        for (int filterX = -filterOffset;
+                            filterX <= filterOffset; filterX++)
+                        {
+                            calcOffset = byteOffset +
+                                         (filterX * 4) +
+                                         (filterY * sourceData.Stride);
+
+                            blueX += (double)(pixelBuffer[calcOffset]) *
+                                      xFilterMatrix[filterY + filterOffset,
+                                              filterX + filterOffset];
+
+                            greenX += (double)(pixelBuffer[calcOffset + 1]) *
+                                      xFilterMatrix[filterY + filterOffset,
+                                              filterX + filterOffset];
+
+                            redX += (double)(pixelBuffer[calcOffset + 2]) *
+                                      xFilterMatrix[filterY + filterOffset,
+                                              filterX + filterOffset];
+
+                            blueY += (double)(pixelBuffer[calcOffset]) *
+                                      yFilterMatrix[filterY + filterOffset,
+                                              filterX + filterOffset];
+
+                            greenY += (double)(pixelBuffer[calcOffset + 1]) *
+                                      yFilterMatrix[filterY + filterOffset,
+                                              filterX + filterOffset];
+
+                            redY += (double)(pixelBuffer[calcOffset + 2]) *
+                                      yFilterMatrix[filterY + filterOffset,
+                                              filterX + filterOffset];
+                        }
+                    }
+
+                    blueTotal = Math.Sqrt((blueX * blueX) + (blueY * blueY));
+                    greenTotal = Math.Sqrt((greenX * greenX) + (greenY * greenY));
+                    redTotal = Math.Sqrt((redX * redX) + (redY * redY));
+
+                    if (blueTotal > 255)
+                    { blueTotal = 255; }
+                    else if (blueTotal < 0)
+                    { blueTotal = 0; }
+
+                    if (greenTotal > 255)
+                    { greenTotal = 255; }
+                    else if (greenTotal < 0)
+                    { greenTotal = 0; }
+
+                    if (redTotal > 255)
+                    { redTotal = 255; }
+                    else if (redTotal < 0)
+                    { redTotal = 0; }
+
+                    resultBuffer[byteOffset] = (byte)(blueTotal);
+                    resultBuffer[byteOffset + 1] = (byte)(greenTotal);
+                    resultBuffer[byteOffset + 2] = (byte)(redTotal);
+                    resultBuffer[byteOffset + 3] = 255;
+                }
+            }
+
+            Bitmap resultBitmap = new Bitmap(sourceBitmap.Width, sourceBitmap.Height);
+
+            BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0,
+                                     resultBitmap.Width, resultBitmap.Height),
+                                                      ImageLockMode.WriteOnly,
+                                                  PixelFormat.Format32bppArgb);
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, resultBuffer.Length);
+            resultBitmap.UnlockBits(resultData);
+
+            return resultBitmap;
         }
 
-        public static void ApplyHighPassFilter(Bitmap image)
+        public static Bitmap ApplyHighPassFilter(Bitmap image)
         {
-            var imageStructure = new ImageStructure(image);
-            var rgbMatrix = TransformArrayByteToColorRepresentationMatrix(imageStructure.BufferPixels, image.Width, image.Height);
-
             var filter = new float[,]
-                { { -1/9f, -1/9f, -1/9f,  },
-                  { -1/9f, -1/9f, -1/9f,  },
-                  { -1/9f, -1/9f, -1/9f,  }, };
+                { {-1,-1,-1,},
+                  {-1, 8, -1,},
+                  {-1,-1,-1,}, };
 
-            ApplyConvultion(rgbMatrix, filter);
-            var result = PixelMatrixToArrayByte(rgbMatrix, imageStructure.BufferPixels.Length);
-            imageStructure.BufferPixels = result;
+            return ConvolutionFilter(image, filter);
         }
 
         public static Bitmap ApplyLowPassFilter(Bitmap sourceBitmap)
         {
-            var imageStructure = new ImageStructure(sourceBitmap);
-            var rgbMatrix = TransformArrayByteToColorRepresentationMatrix(imageStructure.BufferPixels, sourceBitmap.Width, sourceBitmap.Height);
-
-            var filter = new float[,] { { 1/9f ,1/9f ,1/9f},
+            var filter = new float[,] {  {1/9f ,1/9f ,1/9f},
                                          {1/9f ,1/9f ,1/9f },
                                          {1/9f ,1/9f ,1/9f } };
 
-            ApplyCorrelation(rgbMatrix, filter);
-            var resultBuffer = PixelMatrixToArrayByte(rgbMatrix, imageStructure.BufferPixels.Length);
-            return BitmapHelper.CreateNewBitmpFrom(sourceBitmap, resultBuffer);
+            return ConvolutionFilter(sourceBitmap, filter);
         }
+
+        public static Bitmap ApplyPrewitt(Bitmap sourceBitmap)
+        {
+            var filterV = new float[,]
+                { {  1,  1,  1, },
+                  {  0,  0,  0, },
+                  { -1, -1, -1, }, };
+
+            var filterH = new float[,]
+                { { -1,  0,  1, },
+                  { -1,  0,  1, },
+                  { -1,  0,  1, }, };
+
+            return ConvolutionFilter(sourceBitmap, filterV, filterH);
+
+        }
+
     }
 }

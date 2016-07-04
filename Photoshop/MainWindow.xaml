@@ -16,13 +16,13 @@
                 <MenuItem Command="{Binding LoadImage2Command}" Header="Carregar imagem 2" />
             </MenuItem>
             <MenuItem Header="Filtro">
-                <MenuItem Command="{Binding ChangeToGrayScaleCommand}" Header="Cinza" />
-                <MenuItem Command="{Binding ApplyCorrelationCommand}" Header="Correlação" />
+                <MenuItem Command="{Binding ChangeToGrayScaleCommand}" Header="Tons de cinza" />
                 <MenuItem Command="{Binding BitwiseOrOperationCommand}" Header="Or" />
                 <MenuItem Command="{Binding BitwiseXorOperationCommand}" Header="Xor" />
                 <MenuItem Command="{Binding BitwiseAndOperationCommand}" Header="And" />
                 <MenuItem Command="{Binding ShowHistogramCommand}" Header="Histograma" />
                 <MenuItem Command="{Binding ApplyLowPassFilterCommand}" Header="Passa-baixa" />
+                <MenuItem Command="{Binding ApplyPrewittCommand}" Header="Prewwit" />
                 <MenuItem Command="{Binding ApplyHighPassFilterCommand}" Header="Passa-alta" />
                 
             </MenuItem>

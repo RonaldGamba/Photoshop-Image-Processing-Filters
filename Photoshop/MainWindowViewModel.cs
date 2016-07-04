@@ -30,14 +30,8 @@ namespace Photoshop
                 if (_loadImage1Command == null)
                     _loadImage1Command = new RelayCommand(() =>
                     {
-                        var fileDialog = new OpenFileDialog();
-                        var result = fileDialog.ShowDialog();
-
-                        if (result.HasValue && result.Value)
-                        {
-                            _originalImage1 = new Bitmap(fileDialog.FileName);
-                            Image = BitmapHelper.BitmapToBitmapImage(BitmapHelper.Fix(_originalImage1));
-                        }
+                        _originalImage1 = LoadImage();
+                        Image = BitmapHelper.BitmapToBitmapImage(_originalImage1);
                     });
 
                 return _loadImage1Command;
@@ -90,6 +84,15 @@ namespace Photoshop
             get
             {
                 return _applyHighPassFilterCommand ?? (_applyHighPassFilterCommand = new RelayCommand(ApplyHighPassFilter));
+            }
+        }
+
+        private RelayCommand _applyPrewittCommand;
+        public RelayCommand ApplyPrewittCommand
+        {
+            get
+            {
+                return _applyPrewittCommand ?? (_applyPrewittCommand = new RelayCommand(ApplyPrewitt));
             }
         }
 
@@ -192,7 +195,7 @@ namespace Photoshop
             var result = ImageManipulator.ApplyGrayScaleTo(_originalImage1);
             ResultImage = BitmapHelper.BitmapToBitmapImage(result);
         }
-        
+
         private void ApplyLowPassFilter()
         {
             var bitmapResult = ImageManipulator.ApplyLowPassFilter(_originalImage1);
@@ -201,8 +204,14 @@ namespace Photoshop
 
         private void ApplyHighPassFilter()
         {
-            ImageManipulator.ApplyHighPassFilter(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(_originalImage1);
+            var result = ImageManipulator.ApplyHighPassFilter(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+        }
+
+        private void ApplyPrewitt()
+        {
+            var result = ImageManipulator.ApplyPrewitt(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
@@ -229,6 +238,29 @@ namespace Photoshop
             var img2 = _originalImage2.Clone() as Bitmap;
 
             ResultImage = BitmapHelper.BitmapToBitmapImage(ImageManipulator.BitwiseOperation(img1, img2, (v1, v2) => (byte)(v1 ^ v2)));
+        }
+
+        private Bitmap LoadImage()
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Title = "Selecione uma image.";
+            ofd.Filter = "Png Images(*.png)|*.png|Jpeg Images(*.jpg)|*.jpg";
+            ofd.Filter += "|Bitmap Images(*.bmp)|*.bmp";
+            var result = ofd.ShowDialog();
+
+            if (result.HasValue && result.Value)
+            {
+                StreamReader streamReader = new StreamReader(ofd.FileName);
+                var image = (Bitmap)Bitmap.FromStream(streamReader.BaseStream);
+                streamReader.Close();
+
+                image = BitmapHelper.Fix(image);
+                //picPreview.Image = previewBitmap;
+
+                return image;
+            }
+
+            return null;
         }
     }
 

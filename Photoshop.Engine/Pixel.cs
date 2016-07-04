@@ -49,7 +49,7 @@
 
         public override string ToString()
         {
-            return string.Format("R:{0} - G:{1} - B:{2}", _r, _g, _b);
+            return string.Format("R:{0} - G:{1} - B:{2} - A:{3}", _r, _g, _b, _a);
         }
     }
 }
