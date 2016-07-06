@@ -16,35 +16,36 @@ namespace Photoshop.Engine
 
         public static Bitmap ApplyGrayScaleTo(Bitmap image)
         {
-            var imageStructure = new ImageStructure(image);
+            var pixelBuffer = ReadImageBytes(image);
+            var resultBuffer = new byte[pixelBuffer.Length];
 
-            for (int i = 0; i < imageStructure.BufferPixels.Length - 4; i += 4)
+            for (int i = 0; i < pixelBuffer.Length - BYTES_PER_PIXEL; i += BYTES_PER_PIXEL)
             {
-                var r = imageStructure.BufferPixels[i];
-                var g = imageStructure.BufferPixels[i + 1];
-                var b = imageStructure.BufferPixels[i + 2];
+                var r = pixelBuffer[i];
+                var g = pixelBuffer[i + 1];
+                var b = pixelBuffer[i + 2];
 
                 var gray = (byte)((r + g + b) / 3);
 
-                imageStructure.BufferPixels[i] = gray;
-                imageStructure.BufferPixels[i + 1] = gray;
-                imageStructure.BufferPixels[i + 2] = gray;
+                resultBuffer[i] = gray;
+                resultBuffer[i + 1] = gray;
+                resultBuffer[i + 2] = gray;
+                resultBuffer[i + 3] = 255;
             }
 
-            return BitmapHelper.CreateNewBitmapFrom(image, imageStructure.BufferPixels);
+            return BitmapHelper.CreateNewBitmapFrom(image, resultBuffer);
         }
 
-        public static int[] GenerateImageHistogram(Bitmap image)
+        public static float[] GenerateImageHistogram(Bitmap image)
         {
-            var grayIntensitivity = new int[256];
-            var imageStructure = new ImageStructure(image);
-            var arrayPixel = TransformArrayByteToColorRepresentationMatrix(imageStructure.BufferPixels, image.Width, image.Height);
+            var grayIntensitivity = new float[256];
+            var pixelBuffer = ReadImageBytes(image);
 
-            for (int i = 0; i < imageStructure.BufferPixels.Length - 3; i += 3)
+            for (int i = 0; i < pixelBuffer.Length - 3; i += 3)
             {
-                var r = imageStructure.BufferPixels[i];
-                var g = imageStructure.BufferPixels[i + 1];
-                var b = imageStructure.BufferPixels[i + 2];
+                var r = pixelBuffer[i];
+                var g = pixelBuffer[i + 1];
+                var b = pixelBuffer[i + 2];
 
                 var grayScale = (byte)((r + g + b) / 3);
                 grayIntensitivity[grayScale]++;
@@ -53,75 +54,177 @@ namespace Photoshop.Engine
             return grayIntensitivity;
         }
 
-        public static Bitmap BitwiseOperation(Bitmap b1, Bitmap b2, Func<int, int, byte> operation)
+        public static float[] EqualizeHistogram(Bitmap image)
         {
+            var histogram = GenerateImageHistogram(image);
+            var probabilityPixels = new float[256];
+            var cumulativeProbability = new float[256];
+            var result = new float[256];
 
-            var b1Bytes = GetBytes(b1);
-            var b2Bytes = GetBytes(b2);
-            var result = new byte[Math.Min(b1Bytes.Count(), b2Bytes.Count())];
+            for (int i = 0; i < histogram.Length; i++)
+                probabilityPixels[i] = histogram[i] / (image.Width * image.Height);
 
-            for (int i = 0; i < result.Length; i++)
+            for (int i = 0; i < probabilityPixels.Length; i++)
             {
-                var v1 = (int)b1Bytes[i];
-                var v2 = (int)b2Bytes[i];
-                result[i] = operation(v1, v2);
+                if (i == 0)
+                    cumulativeProbability[0] = probabilityPixels[0];
+                else
+                    for (int j = i; j >= 0; j--)
+                        cumulativeProbability[i] += probabilityPixels[j];
+
+                cumulativeProbability[i] *= 7;
+                result[i] = (float)Math.Floor(cumulativeProbability[i]);
             }
 
-            var imageStructure = new ImageStructure(b1);
-            imageStructure.BufferPixels = result;
-
-            return b1;
-
+            return result;
         }
 
-        private static byte[] GetBytes(Bitmap image)
+        private static byte[] ReadImageBytes(Bitmap image)
         {
-            var imageStructure = new ImageStructure(image);
-            return imageStructure.BufferPixels;
+            var sourceData = image.LockBits(
+               new Rectangle(0, 0,
+               image.Width,
+               image.Height),
+               ImageLockMode.ReadOnly,
+               PixelFormat.Format32bppArgb);
+
+            var pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
+
+            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
+            image.UnlockBits(sourceData);
+
+            return pixelBuffer;
         }
 
-        public static Pixel[,] TransformArrayByteToColorRepresentationMatrix(byte[] array, int width, int height)
+        public static Bitmap ApplyLaplacianFilter(Bitmap image)
         {
-            var matrix = new Pixel[height, width];
-            var positionOnArray = 0;
+            var filter = new float[,]
+                { {0,-1f,0,},
+                  {-1f,  4,  -1f,},
+                  {0,-1f,0,}, };
 
-            for (int i = 0; i < height; i++)
+            return ConvolutionFilter(image, filter);
+        }
+
+        public static Bitmap ApplyHighPassFilter(Bitmap image)
+        {
+            var filter = new float[,]
+                { {-1f,-1f,-1f,},
+                  {-1f,  8,-1f,},
+                  {-1f,-1f,-1f,}, };
+
+            return ConvolutionFilter(image, filter);
+        }
+
+        public static Bitmap ApplyLowPassFilter(Bitmap sourceBitmap)
+        {
+            var filter = new float[,] {  {1/9f ,1/9f ,1/9f},
+                                         {1/9f ,1/9f ,1/9f },
+                                         {1/9f ,1/9f ,1/9f } };
+
+            return ConvolutionFilter(sourceBitmap, filter);
+        }
+
+        public static Bitmap ApplyMedianPassFilter(Bitmap sourceBitmap, eMedianFilterQuality quality)
+        {
+            BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
+                              sourceBitmap.Width, sourceBitmap.Height),
+                                                ImageLockMode.ReadOnly,
+                                          PixelFormat.Format32bppArgb);
+
+            byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
+            byte[] resultBuffer = new byte[sourceData.Stride * sourceData.Height];
+
+            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
+            sourceBitmap.UnlockBits(sourceData);
+
+            var qualityValue = (int)(quality);
+            var neighborsOffset = qualityValue / 2;
+            var mediumValueIndex = (qualityValue * qualityValue + 1) / 2;
+
+            for (int imageOffsetX = neighborsOffset; imageOffsetX < sourceBitmap.Height - neighborsOffset; imageOffsetX++)
             {
-                for (int j = 0; j < width; j++)
+                for (int imageOffsetY = neighborsOffset; imageOffsetY < sourceBitmap.Width - neighborsOffset; imageOffsetY++)
                 {
-                    var r = array[positionOnArray++];
-                    var g = array[positionOnArray++];
-                    var b = array[positionOnArray++];
-                    var a = array[positionOnArray++];
-                    matrix[i, j] = new Pixel(r, g, b, a);
+                    var centralPixelPos = (sourceData.Stride * imageOffsetX) + (imageOffsetY * BYTES_PER_PIXEL);
+
+                    var blueValues = new byte[qualityValue * qualityValue];
+                    var greenValues = new byte[qualityValue * qualityValue];
+                    var redValues = new byte[qualityValue * qualityValue];
+                    var posOnArray = 0;
+
+                    for (int offsetX = -neighborsOffset; offsetX <= neighborsOffset; offsetX++)
+                    {
+                        for (int offsetY = -neighborsOffset; offsetY <= neighborsOffset; offsetY++)
+                        {
+                            var currentPixelPos = (sourceData.Stride * (imageOffsetX + offsetX)) + (offsetY + imageOffsetY) * BYTES_PER_PIXEL;
+
+                            blueValues[posOnArray] = pixelBuffer[currentPixelPos];
+                            greenValues[posOnArray] = pixelBuffer[currentPixelPos + 1];
+                            redValues[posOnArray] = pixelBuffer[currentPixelPos + 2];
+
+                            posOnArray++;
+                        }
+                    }
+
+                    resultBuffer[centralPixelPos] = blueValues.OrderBy(v => v).ElementAt(mediumValueIndex);
+                    resultBuffer[centralPixelPos + 1] = greenValues.OrderBy(v => v).ElementAt(mediumValueIndex);
+                    resultBuffer[centralPixelPos + 2] = redValues.OrderBy(v => v).ElementAt(mediumValueIndex);
+                    resultBuffer[centralPixelPos + 3] = 255;
                 }
             }
 
-            return matrix;
+            return BitmapHelper.CreateNewBitmapFrom(sourceBitmap, resultBuffer);
         }
 
-        public static byte[] PixelMatrixToArrayByte(Pixel[,] matrix, int pixelLength)
+        public static Bitmap ApplyPrewittFilter(Bitmap sourceBitmap)
         {
-            var rows = matrix.GetLength(0);
-            var columns = matrix.GetLength(1);
-            var bytes = new byte[pixelLength];
-            var arrayBytePosition = 0;
+            var filterV = new float[,]
+                { {  1,  1,  1, },
+                  {  0,  0,  0, },
+                  { -1, -1, -1, }, };
 
-            for (int i = 0; i < rows; i++)
-            {
-                for (int j = 0; j < columns; j++)
-                {
-                    bytes[arrayBytePosition++] = (byte)matrix[i, j].R;
-                    bytes[arrayBytePosition++] = (byte)matrix[i, j].G;
-                    bytes[arrayBytePosition++] = (byte)matrix[i, j].B;
-                    bytes[arrayBytePosition++] = (byte)matrix[i, j].A;
-                }
-            }
+            var filterH = new float[,]
+                { { -1,  0,  1, },
+                  { -1,  0,  1, },
+                  { -1,  0,  1, }, };
 
-            return bytes;
+            return ConvolutionFilter(sourceBitmap, filterV, filterH);
+
         }
 
-        public static Bitmap ConvolutionFilter(Bitmap sourceBitmap, float[,] filter)
+        public static Bitmap ApplySobelFilter(Bitmap sourceBitmap)
+        {
+            var filterV = new float[,]
+               { {  -1,  0, 1, },
+                  { -2,  0, 2, },
+                  { -1, -0, 1, }, };
+
+            var filterH = new float[,]
+                { { -1,  -2, -1, },
+                  {  0,   0,  0, },
+                  {  1,  2, 1, }, };
+
+            return ConvolutionFilter(sourceBitmap, filterV, filterH);
+        }
+
+        public static Bitmap ApplyRobertFilter(Bitmap sourceBitmap)
+        {
+            var filterV = new float[,]
+               { {  0,  0, -1, },
+                  { 0,  1, 0, },
+                  { 0, -0, 0, }, };
+
+            var filterH = new float[,]
+                { { -1,  0, 0, },
+                  {  0,  1, 0, },
+                  {  0,  0, 0, }, };
+
+            return ConvolutionFilter(sourceBitmap, filterV, filterH);
+        }
+
+        private static Bitmap ConvolutionFilter(Bitmap sourceBitmap, 
+                                                float[,] filter)
         {
             BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
                                      sourceBitmap.Width, sourceBitmap.Height),
@@ -142,7 +245,7 @@ namespace Photoshop.Engine
             {
                 for (int imageOffsetY = 1; imageOffsetY < sourceBitmap.Width - 1; imageOffsetY++)
                 {
-                    var centralPixelPos = (sourceData.Stride * imageOffsetX) + (imageOffsetY * 4);
+                    var centralPixelPos = (sourceData.Stride * imageOffsetX) + (imageOffsetY * BYTES_PER_PIXEL);
 
                     var blue = 0d;
                     var green = 0d;
@@ -152,7 +255,7 @@ namespace Photoshop.Engine
                     {
                         for (int filterY = -filterOffset; filterY <= filterOffset; filterY++)
                         {
-                            var currentPixelBasPos = (sourceData.Stride * (imageOffsetX + filterX)) + (filterY + imageOffsetY) * 4;
+                            var currentPixelBasPos = (sourceData.Stride * (imageOffsetX + filterX)) + (filterY + imageOffsetY) * BYTES_PER_PIXEL;
 
                             blue += pixelBuffer[currentPixelBasPos] * filter[filterX + filterOffset, filterY + filterOffset];
                             green += pixelBuffer[currentPixelBasPos + 1] * filter[filterX + filterOffset, filterY + filterOffset];
@@ -185,12 +288,9 @@ namespace Photoshop.Engine
             return BitmapHelper.CreateNewBitmapFrom(sourceBitmap, resultBuffer);
         }
 
-        public static Bitmap ConvolutionFilter(this Bitmap sourceBitmap,
+        private static Bitmap ConvolutionFilter(this Bitmap sourceBitmap,
                                            float[,] xFilterMatrix,
-                                           float[,] yFilterMatrix,
-                                                 double factor = 1,
-                                                      int bias = 0,
-                                            bool grayscale = false)
+                                           float[,] yFilterMatrix)
         {
             BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
                                      sourceBitmap.Width, sourceBitmap.Height),
@@ -202,23 +302,6 @@ namespace Photoshop.Engine
 
             Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
             sourceBitmap.UnlockBits(sourceData);
-
-            if (grayscale == true)
-            {
-                float rgb = 0;
-
-                for (int k = 0; k < pixelBuffer.Length; k += 4)
-                {
-                    rgb = pixelBuffer[k] * 0.11f;
-                    rgb += pixelBuffer[k + 1] * 0.59f;
-                    rgb += pixelBuffer[k + 2] * 0.3f;
-
-                    pixelBuffer[k] = (byte)rgb;
-                    pixelBuffer[k + 1] = pixelBuffer[k];
-                    pixelBuffer[k + 2] = pixelBuffer[k];
-                    pixelBuffer[k + 3] = 255;
-                }
-            }
 
             double blueX = 0.0;
             double greenX = 0.0;
@@ -314,87 +397,14 @@ namespace Photoshop.Engine
                 }
             }
 
-            Bitmap resultBitmap = new Bitmap(sourceBitmap.Width, sourceBitmap.Height);
-
-            BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0,
-                                     resultBitmap.Width, resultBitmap.Height),
-                                                      ImageLockMode.WriteOnly,
-                                                  PixelFormat.Format32bppArgb);
-
-            Marshal.Copy(resultBuffer, 0, resultData.Scan0, resultBuffer.Length);
-            resultBitmap.UnlockBits(resultData);
-
-            return resultBitmap;
+            return BitmapHelper.CreateNewBitmapFrom(sourceBitmap, resultBuffer);
         }
+    }
 
-        public static Bitmap ApplyHighPassFilter(Bitmap image)
-        {
-            //var filter = new float[,]
-            //    { {-1/9f,-1/9f,-1/9f,},
-            //      {-1/9f,  8,  -1/9f,},
-            //      {-1/9f,-1/9f,-1/9f,}, };
-
-            var filter = new float[,]
-                { {0,-1/4f,0,},
-                  {-1/4f,  2,  -1/4f,},
-                  {0,-1/4f,0,}, };
-
-            return ConvolutionFilter(image, filter);
-        }
-
-        public static Bitmap ApplyLowPassFilter(Bitmap sourceBitmap)
-        {
-            var filter = new float[,] {  {1/9f ,1/9f ,1/9f},
-                                         {1/9f ,1/9f ,1/9f },
-                                         {1/9f ,1/9f ,1/9f } };
-
-            return ConvolutionFilter(sourceBitmap, filter);
-        }
-
-        public static Bitmap ApplyPrewitt(Bitmap sourceBitmap)
-        {
-            var filterV = new float[,]
-                { {  1,  1,  1, },
-                  {  0,  0,  0, },
-                  { -1, -1, -1, }, };
-
-            var filterH = new float[,]
-                { { -1,  0,  1, },
-                  { -1,  0,  1, },
-                  { -1,  0,  1, }, };
-
-            return ConvolutionFilter(sourceBitmap, filterV, filterH);
-
-        }
-
-        public static Bitmap ApplySobel(Bitmap sourceBitmap)
-        {
-            var filterV = new float[,]
-               { {  -1,  0, 1, },
-                  { -2,  0, 2, },
-                  { -1, -0, 1, }, };
-
-            var filterH = new float[,]
-                { { -1,  -2, -1, },
-                  {  0,   0,  0, },
-                  {  1,  2, 1, }, };
-
-            return ConvolutionFilter(sourceBitmap, filterV, filterH);
-        }
-
-        public static Bitmap ApplyRobert(Bitmap sourceBitmap)
-        {
-            var filterV = new float[,]
-               { {  0,  0, -1, },
-                  { 0,  1, 0, },
-                  { 0, -0, 0, }, };
-
-            var filterH = new float[,]
-                { { -1,  0, 0, },
-                  {  0,  1, 0, },
-                  {  0,  0, 0, }, };
-
-            return ConvolutionFilter(sourceBitmap, filterV, filterH);
-        }
+    public enum eMedianFilterQuality
+    {
+        Low3x3 = 3,
+        Medium5x5 = 5,
+        High7x7 = 7
     }
 }

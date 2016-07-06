@@ -1,120 +1,113 @@
 ﻿<Window x:Class="Photoshop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Photoshop"
         xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
-        Title="MainWindow"
+        Title="Image manipulator"
+        WindowStartupLocation="CenterScreen"
         Width="900"
         Height="600">
+
+    <Window.Resources>
+        <Style TargetType="MenuItem" x:Key="menuItemStyle">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Image}" Value="{x:Null}">
+                    <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Window.DataContext>
+        <local:MainWindowViewModel/>
+    </Window.DataContext>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Menu Height="25">
+        <Menu >
             <MenuItem Header="Arquivo">
-                <MenuItem Command="{Binding LoadImage1Command}" Header="Carregar imagem 1" />
-                <MenuItem Command="{Binding LoadImage2Command}" Header="Carregar imagem 2" />
+                <MenuItem Command="{Binding LoadImageCommand}" Header="Carregar imagem" />
+                <MenuItem Command="{Binding RestoreOriginalImageCommand}"
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Recarregar imagem original" />
             </MenuItem>
-            <MenuItem Header="Filtro">
-                <MenuItem Command="{Binding ChangeToGrayScaleCommand}" Header="Tons de cinza" />
-                <MenuItem Command="{Binding BitwiseOrOperationCommand}" Header="Or" />
-                <MenuItem Command="{Binding BitwiseXorOperationCommand}" Header="Xor" />
-                <MenuItem Command="{Binding BitwiseAndOperationCommand}" Header="And" />
-                <MenuItem Command="{Binding ShowHistogramCommand}" Header="Histograma" />
-                <MenuItem Command="{Binding ApplyLowPassFilterCommand}" Header="Passa-baixa" />
-                <MenuItem Command="{Binding ApplyPrewittCommand}" Header="Prewwit" />
-                <MenuItem Command="{Binding ApplyHighPassFilterCommand}" Header="Passa-alta" />
-                <MenuItem Command="{Binding ApplySobelCommand}" Header="Sobel" />
-                <MenuItem Command="{Binding ApplyRobertCommand}" Header="Robert" />
-                
+            <MenuItem Header="Filtros"
+                      Style="{StaticResource menuItemStyle}">
+                <MenuItem Command="{Binding ChangeToGrayScaleCommand}"
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Tons de cinza" />
+                <Separator/>
+                <MenuItem Command="{Binding ApplyLowPassFilterCommand}"
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Passa-baixa" />
+                <MenuItem Command="{Binding ApplyHighPassFilterCommand}" 
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Passa-alta" />
+                <MenuItem Command="{Binding ApplyLaplacianFilterCommand}" 
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Laplaciano" />
+                <Separator/>
+                <MenuItem Command="{Binding ApplyPrewittCommand}"
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Prewwit" />
+                <MenuItem Command="{Binding ApplySobelCommand}" 
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Sobel" />
+                <MenuItem Command="{Binding ApplyRobertCommand}" 
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Robert" />
+                <MenuItem Header="Mediana" 
+                          Style="{StaticResource menuItemStyle}">
+                    <MenuItem  Command="{Binding ApplyMedianFilterCommand}"
+                               CommandParameter="Low3x3"
+                               Header="Baixa qualidade (3X3)"/>
+                    <MenuItem  Command="{Binding ApplyMedianFilterCommand}" 
+                               CommandParameter="Medium5x5"
+                               Header="Media qualidade (5X5)"/>
+                    <MenuItem  Command="{Binding ApplyMedianFilterCommand}" 
+                               CommandParameter="High7x7"
+                               Header="Alta qualidade (7X7)"/>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Command="{Binding ShowHistogramCommand}"
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Histograma" />
             </MenuItem>
         </Menu>
-        <Grid Grid.Row="1" Margin="0.5">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="5*" />
-                <RowDefinition Height="5" />
-                <RowDefinition Height="5*" />
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="5*" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="5*" />
-            </Grid.ColumnDefinitions>
-
-            <TextBlock HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Background="Transparent"
-                       FontSize="45"
-                       Foreground="Gray"
-                       Text="Imagem 1">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Image1}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-                <i:Interaction.Triggers>
-                    <i:EventTrigger EventName="MouseDown">
-                        <i:InvokeCommandAction Command="{Binding LoadImage1Command}" />
-                    </i:EventTrigger>
-                </i:Interaction.Triggers>
-            </TextBlock>
-
-            <Image IsHitTestVisible="true" Source="{Binding Image}" />
-            <GridSplitter Grid.RowSpan="3"
-                          Grid.Column="1"
-                          Width="5"
-                          HorizontalAlignment="Stretch" />
+        <Grid Grid.Row="1" Margin="0.5">          
             <TextBlock Grid.RowSpan="3"
                        Grid.Column="2"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
                        FontSize="45"
                        Foreground="Gray"
-                       Text="Resultado">
+                       Text="Click para carregar uma imagem">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Hidden"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding ImageResult}" Value="{x:Null}">
+                            <DataTrigger Binding="{Binding Image}" Value="{x:Null}">
                                 <Setter Property="Visibility" Value="Visible" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </TextBlock.Style>
-            </TextBlock>
-            <Image Grid.RowSpan="3"
-                   Grid.Column="2"
-                   Source="{Binding ResultImage}" />
-            <GridSplitter Grid.Row="1"
-                          Height="5"
-                          HorizontalAlignment="Stretch" />
-
-            <TextBlock Grid.Row="2"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       FontSize="45"
-                       Foreground="Gray"
-                       Text="Imagem 2">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Image2}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-                   <i:Interaction.Triggers>
+                 <i:Interaction.Triggers>
                     <i:EventTrigger EventName="MouseDown">
-                        <i:InvokeCommandAction Command="{Binding LoadImage2Command}"/>
+                        <i:InvokeCommandAction Command="{Binding LoadImageCommand}"/>
                     </i:EventTrigger>
                 </i:Interaction.Triggers>
             </TextBlock>
-
-            <Image Grid.Row="2" Source="{Binding Image2}" />
+            <Border BorderThickness="2"
+                    Margin="10"
+                    BorderBrush="Gainsboro">
+                <Image Grid.RowSpan="3"
+                   Grid.Column="2"
+                   Source="{Binding Image}" />
+            </Border>
         </Grid>
     </Grid>
 </Window>

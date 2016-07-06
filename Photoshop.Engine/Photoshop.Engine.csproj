@@ -46,8 +46,6 @@
   <ItemGroup>
     <Compile Include="BitmapHelper.cs" />
     <Compile Include="ImageManipulator.cs" />
-    <Compile Include="ImageStructure.cs" />
-    <Compile Include="Pixel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

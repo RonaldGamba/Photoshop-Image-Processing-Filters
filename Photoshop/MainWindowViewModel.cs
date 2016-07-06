@@ -19,44 +19,41 @@ namespace Photoshop
 {
     public class MainWindowViewModel : INotifyPropertyChanged
     {
-        private Bitmap _originalImage1;
-        private Bitmap _originalImage2;
+        private Bitmap _originalImage;
 
-        private RelayCommand _loadImage1Command;
-        public RelayCommand LoadImage1Command
+        private RelayCommand _loadImageCommand;
+        public RelayCommand LoadImageCommand
         {
             get
             {
-                if (_loadImage1Command == null)
-                    _loadImage1Command = new RelayCommand(() =>
+                if (_loadImageCommand == null)
+                    _loadImageCommand = new RelayCommand(() =>
                     {
-                        _originalImage1 = LoadImage();
-                        Image = BitmapHelper.BitmapToBitmapImage(_originalImage1);
-                    });
+                        var loadedImage = LoadImage();
 
-                return _loadImage1Command;
-            }
-        }
-
-        private RelayCommand _loadImage2Command;
-        public RelayCommand LoadImage2Command
-        {
-            get
-            {
-                if (_loadImage2Command == null)
-                    _loadImage2Command = new RelayCommand(() =>
-                    {
-                        var fileDialog = new OpenFileDialog();
-                        var result = fileDialog.ShowDialog();
-
-                        if (result.HasValue && result.Value)
+                        if (loadedImage != null)
                         {
-                            _originalImage2 = new Bitmap(fileDialog.FileName);
-                            Image2 = BitmapHelper.BitmapToBitmapImage(BitmapHelper.Fix(_originalImage2));
+                            _originalImage = loadedImage;
+                            Image = BitmapHelper.BitmapToBitmapImage(_originalImage);
                         }
                     });
 
-                return _loadImage2Command;
+                return _loadImageCommand;
+            }
+        }
+
+        private RelayCommand _restoreOriginalImageCommand;
+        public RelayCommand RestoreOriginalImageCommand
+        {
+            get
+            {
+                if (_restoreOriginalImageCommand == null)
+                    _restoreOriginalImageCommand = new RelayCommand(() =>
+                    {
+                        Image = BitmapHelper.BitmapToBitmapImage(_originalImage);
+                    });
+
+                return _restoreOriginalImageCommand;
             }
         }
 
@@ -75,6 +72,15 @@ namespace Photoshop
             get
             {
                 return _applyLowPassFilterCommand ?? (_applyLowPassFilterCommand = new RelayCommand(ApplyLowPassFilter));
+            }
+        }
+
+        private RelayCommand _applyLaplacianFilterCommand;
+        public RelayCommand ApplyLaplacianFilterCommand
+        {
+            get
+            {
+                return _applyLaplacianFilterCommand ?? (_applyLaplacianFilterCommand = new RelayCommand(ApplyLaplacianFilter));
             }
         }
 
@@ -114,42 +120,12 @@ namespace Photoshop
             }
         }
 
-        private RelayCommand _bitwiseOrOperationCommand;
-        public RelayCommand BitwiseOrOperationCommand
+        private RelayCommand<eMedianFilterQuality> _applyMedianFilterCommand;
+        public RelayCommand<eMedianFilterQuality> ApplyMedianFilterCommand
         {
             get
             {
-
-                if (_bitwiseOrOperationCommand == null)
-                    _bitwiseOrOperationCommand = new RelayCommand(BitwiseOrOperation);
-
-                return _bitwiseOrOperationCommand;
-            }
-        }
-
-        private RelayCommand _bitwiseXorOperationCommand;
-        public RelayCommand BitwiseXorOperationCommand
-        {
-            get
-            {
-
-                if (_bitwiseXorOperationCommand == null)
-                    _bitwiseXorOperationCommand = new RelayCommand(BitwiseXorOperation);
-
-                return _bitwiseXorOperationCommand;
-            }
-        }
-
-        private RelayCommand _bitwiseAndOperationCommand;
-        public RelayCommand BitwiseAndOperationCommand
-        {
-            get
-            {
-
-                if (_bitwiseAndOperationCommand == null)
-                    _bitwiseAndOperationCommand = new RelayCommand(BitwiseAndOperation);
-
-                return _bitwiseAndOperationCommand;
+                return _applyMedianFilterCommand ?? (_applyMedianFilterCommand = new RelayCommand<eMedianFilterQuality>(ApplyMedianFilter));
             }
         }
 
@@ -168,7 +144,7 @@ namespace Photoshop
         private void ShowHistogram()
         {
             var histogramView = new HistogramView();
-            histogramView.DataContext = new HistogramViewModel(ImageManipulator.GenerateImageHistogram(_originalImage1));
+            histogramView.DataContext = new HistogramViewModel(ImageManipulator.GenerateImageHistogram(_originalImage), ImageManipulator.EqualizeHistogram(_originalImage));
             histogramView.ShowDialog();
         }
 
@@ -180,17 +156,6 @@ namespace Photoshop
             {
                 _image = value;
                 PropertyChanged(this, new PropertyChangedEventArgs("Image"));
-            }
-        }
-
-        private BitmapImage _image2;
-        public BitmapImage Image2
-        {
-            get { return _image2; }
-            set
-            {
-                _image2 = value;
-                PropertyChanged(this, new PropertyChangedEventArgs("Image2"));
             }
         }
 
@@ -210,72 +175,59 @@ namespace Photoshop
 
         private void ChangeToGrayScale()
         {
-            var result = ImageManipulator.ApplyGrayScaleTo(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+            var result = ImageManipulator.ApplyGrayScaleTo(_originalImage);
+            Image = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         private void ApplyLowPassFilter()
         {
-            var bitmapResult = ImageManipulator.ApplyLowPassFilter(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(bitmapResult);
+            var bitmapResult = ImageManipulator.ApplyLowPassFilter(_originalImage);
+            Image = BitmapHelper.BitmapToBitmapImage(bitmapResult);
+        }
+
+        private void ApplyLaplacianFilter()
+        {
+            var result = ImageManipulator.ApplyLaplacianFilter(_originalImage);
+            Image = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         private void ApplyHighPassFilter()
         {
-            var result = ImageManipulator.ApplyHighPassFilter(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+            var result = ImageManipulator.ApplyHighPassFilter(_originalImage);
+            Image = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         private void ApplyPrewitt()
         {
-            var result = ImageManipulator.ApplyPrewitt(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+            var result = ImageManipulator.ApplyPrewittFilter(_originalImage);
+            Image = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         private void ApplySobel()
         {
-            var result = ImageManipulator.ApplySobel(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+            var result = ImageManipulator.ApplySobelFilter(_originalImage);
+            Image = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         private void ApplyRobert()
         {
-            var result = ImageManipulator.ApplyRobert(_originalImage1);
-            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+            var result = ImageManipulator.ApplyRobertFilter(_originalImage);
+            Image = BitmapHelper.BitmapToBitmapImage(result);
+        }
+
+        private void ApplyMedianFilter(eMedianFilterQuality quality)
+        {
+            var result = ImageManipulator.ApplyMedianPassFilter(_originalImage, quality);
+            Image = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
-
-        private void BitwiseOrOperation()
-        {
-            var img1 = _originalImage1.Clone() as Bitmap;
-            var img2 = _originalImage2.Clone() as Bitmap;
-
-            ResultImage = BitmapHelper.BitmapToBitmapImage(ImageManipulator.BitwiseOperation(img1, img2, (v1, v2) => (byte)(v1 | v2)));
-        }
-
-        private void BitwiseAndOperation()
-        {
-            var img1 = _originalImage1.Clone() as Bitmap;
-            var img2 = _originalImage2.Clone() as Bitmap;
-
-            ResultImage = BitmapHelper.BitmapToBitmapImage(ImageManipulator.BitwiseOperation(img1, img2, (v1, v2) => (byte)(v1 & v2)));
-        }
-
-        private void BitwiseXorOperation()
-        {
-            var img1 = _originalImage1.Clone() as Bitmap;
-            var img2 = _originalImage2.Clone() as Bitmap;
-
-            ResultImage = BitmapHelper.BitmapToBitmapImage(ImageManipulator.BitwiseOperation(img1, img2, (v1, v2) => (byte)(v1 ^ v2)));
-        }
-
+        
         private Bitmap LoadImage()
         {
             OpenFileDialog ofd = new OpenFileDialog();
             ofd.Title = "Selecione uma image.";
-            ofd.Filter = "Png Images(*.png)|*.png|Jpeg Images(*.jpg)|*.jpg";
-            ofd.Filter += "|Bitmap Images(*.bmp)|*.bmp";
+            ofd.Filter = "Arquivo de imagens|*.bmp;*.jpg;*.jpeg;*.png";
             var result = ofd.ShowDialog();
 
             if (result.HasValue && result.Value)
@@ -283,11 +235,7 @@ namespace Photoshop
                 StreamReader streamReader = new StreamReader(ofd.FileName);
                 var image = (Bitmap)Bitmap.FromStream(streamReader.BaseStream);
                 streamReader.Close();
-
-                image = BitmapHelper.Fix(image);
-                //picPreview.Image = previewBitmap;
-
-                return image;
+                return BitmapHelper.Fix(image);
             }
 
             return null;
@@ -313,6 +261,31 @@ namespace Photoshop
         public void Execute(object parameter)
         {
             _a.Invoke();
+        }
+    }
+
+    public class RelayCommand<T> : ICommand
+    {
+        private Action<T> _a;
+
+        public RelayCommand(Action<T> a)
+        {
+            _a = a;
+        }
+
+        public bool CanExecute(object parameter)
+        {
+            return true;
+        }
+
+        public event EventHandler CanExecuteChanged;
+
+        public void Execute(object parameter)
+        {
+            if (typeof(T).IsEnum)
+                _a.Invoke((T)Enum.Parse(typeof(T), parameter.ToString()));
+            else
+                _a.Invoke((T)parameter);
         }
     }
 }

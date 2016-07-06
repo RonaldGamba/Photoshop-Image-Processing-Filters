@@ -6,12 +6,23 @@
         xmlns:viewModels="clr-namespace:Photoshop.ViewModels"
         xmlns:local="clr-namespace:Photoshop.Views"
         xmlns:oxy="http://oxyplot.org/wpf"
+        WindowStartupLocation="CenterScreen"
         mc:Ignorable="d"
-        Title="HistogramView" Height="300" Width="300">
+        Title="HistogramView" Height="500" Width="900">
     <Grid>
-        <oxy:Plot Title="Histograma">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="5*"/>
+            <ColumnDefinition Width="5*"/>
+        </Grid.ColumnDefinitions>
+        <oxy:Plot Title="Histograma original">
             <oxy:Plot.Series>
-                <oxy:LineSeries ItemsSource="{Binding Data}"/>
+                <oxy:LineSeries ItemsSource="{Binding NormalHistogramData}"/>
+            </oxy:Plot.Series>
+        </oxy:Plot>
+        <oxy:Plot Title="Histograma Equalizado"
+                  Grid.Column="1">
+            <oxy:Plot.Series>
+                <oxy:LineSeries ItemsSource="{Binding EqualizedHistogramData}"/>
             </oxy:Plot.Series>
         </oxy:Plot>
     </Grid>
