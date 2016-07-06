@@ -96,6 +96,24 @@ namespace Photoshop
             }
         }
 
+        private RelayCommand _applySobelCommand;
+        public RelayCommand ApplySobelCommand
+        {
+            get
+            {
+                return _applySobelCommand ?? (_applySobelCommand = new RelayCommand(ApplySobel));
+            }
+        }
+
+        private RelayCommand _applyRobertCommand;
+        public RelayCommand ApplyRobertCommand
+        {
+            get
+            {
+                return _applyRobertCommand ?? (_applyRobertCommand = new RelayCommand(ApplyRobert));
+            }
+        }
+
         private RelayCommand _bitwiseOrOperationCommand;
         public RelayCommand BitwiseOrOperationCommand
         {
@@ -211,6 +229,18 @@ namespace Photoshop
         private void ApplyPrewitt()
         {
             var result = ImageManipulator.ApplyPrewitt(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+        }
+
+        private void ApplySobel()
+        {
+            var result = ImageManipulator.ApplySobel(_originalImage1);
+            ResultImage = BitmapHelper.BitmapToBitmapImage(result);
+        }
+
+        private void ApplyRobert()
+        {
+            var result = ImageManipulator.ApplyRobert(_originalImage1);
             ResultImage = BitmapHelper.BitmapToBitmapImage(result);
         }
 

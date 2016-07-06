@@ -24,6 +24,8 @@
                 <MenuItem Command="{Binding ApplyLowPassFilterCommand}" Header="Passa-baixa" />
                 <MenuItem Command="{Binding ApplyPrewittCommand}" Header="Prewwit" />
                 <MenuItem Command="{Binding ApplyHighPassFilterCommand}" Header="Passa-alta" />
+                <MenuItem Command="{Binding ApplySobelCommand}" Header="Sobel" />
+                <MenuItem Command="{Binding ApplyRobertCommand}" Header="Robert" />
                 
             </MenuItem>
         </Menu>

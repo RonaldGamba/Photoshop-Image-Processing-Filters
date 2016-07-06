@@ -329,10 +329,15 @@ namespace Photoshop.Engine
 
         public static Bitmap ApplyHighPassFilter(Bitmap image)
         {
+            //var filter = new float[,]
+            //    { {-1/9f,-1/9f,-1/9f,},
+            //      {-1/9f,  8,  -1/9f,},
+            //      {-1/9f,-1/9f,-1/9f,}, };
+
             var filter = new float[,]
-                { {-1,-1,-1,},
-                  {-1, 8, -1,},
-                  {-1,-1,-1,}, };
+                { {0,-1/4f,0,},
+                  {-1/4f,  2,  -1/4f,},
+                  {0,-1/4f,0,}, };
 
             return ConvolutionFilter(image, filter);
         }
@@ -362,5 +367,34 @@ namespace Photoshop.Engine
 
         }
 
+        public static Bitmap ApplySobel(Bitmap sourceBitmap)
+        {
+            var filterV = new float[,]
+               { {  -1,  0, 1, },
+                  { -2,  0, 2, },
+                  { -1, -0, 1, }, };
+
+            var filterH = new float[,]
+                { { -1,  -2, -1, },
+                  {  0,   0,  0, },
+                  {  1,  2, 1, }, };
+
+            return ConvolutionFilter(sourceBitmap, filterV, filterH);
+        }
+
+        public static Bitmap ApplyRobert(Bitmap sourceBitmap)
+        {
+            var filterV = new float[,]
+               { {  0,  0, -1, },
+                  { 0,  1, 0, },
+                  { 0, -0, 0, }, };
+
+            var filterH = new float[,]
+                { { -1,  0, 0, },
+                  {  0,  1, 0, },
+                  {  0,  0, 0, }, };
+
+            return ConvolutionFilter(sourceBitmap, filterV, filterH);
+        }
     }
 }
