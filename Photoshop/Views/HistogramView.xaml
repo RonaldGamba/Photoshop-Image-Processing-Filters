@@ -16,13 +16,13 @@
         </Grid.ColumnDefinitions>
         <oxy:Plot Title="Histograma original">
             <oxy:Plot.Series>
-                <oxy:LineSeries ItemsSource="{Binding NormalHistogramData}"/>
+                <oxy:LinearBarSeries ItemsSource="{Binding NormalHistogramData}"/>
             </oxy:Plot.Series>
         </oxy:Plot>
         <oxy:Plot Title="Histograma Equalizado"
                   Grid.Column="1">
             <oxy:Plot.Series>
-                <oxy:LineSeries ItemsSource="{Binding EqualizedHistogramData}"/>
+                <oxy:LinearBarSeries ItemsSource="{Binding EqualizedHistogramData}"/>
             </oxy:Plot.Series>
         </oxy:Plot>
     </Grid>

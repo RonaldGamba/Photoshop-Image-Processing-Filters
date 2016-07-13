@@ -36,12 +36,12 @@ namespace Photoshop.Engine
             return BitmapHelper.CreateNewBitmapFrom(image, resultBuffer);
         }
 
-        public static float[] GenerateImageHistogram(Bitmap image)
+        public static double[] GenerateImageHistogram(Bitmap image)
         {
-            var grayIntensitivity = new float[256];
+            var grayIntensitivity = new double[256];
             var pixelBuffer = ReadImageBytes(image);
 
-            for (int i = 0; i < pixelBuffer.Length - 3; i += 3)
+            for (int i = 0; i < pixelBuffer.Length - 4; i += 4)
             {
                 var r = pixelBuffer[i];
                 var g = pixelBuffer[i + 1];
@@ -54,26 +54,30 @@ namespace Photoshop.Engine
             return grayIntensitivity;
         }
 
-        public static float[] EqualizeHistogram(Bitmap image)
+        public static double[] EqualizeHistogram(Bitmap image)
         {
             var histogram = GenerateImageHistogram(image);
-            var probabilityPixels = new float[256];
-            var cumulativeProbability = new float[256];
-            var result = new float[256];
+            var probabilityPixels = new double[256];
+            var cumulativeProbability = new double[256];
+            var result = new double[256];
 
+            double t = 0d;
             for (int i = 0; i < histogram.Length; i++)
                 probabilityPixels[i] = histogram[i] / (image.Width * image.Height);
 
             for (int i = 0; i < probabilityPixels.Length; i++)
             {
                 if (i == 0)
-                    cumulativeProbability[0] = probabilityPixels[0];
+                    cumulativeProbability[i] = probabilityPixels[i];
                 else
-                    for (int j = i; j >= 0; j--)
-                        cumulativeProbability[i] += probabilityPixels[j];
+                    cumulativeProbability[i] = probabilityPixels[i] + cumulativeProbability[i - 1];
 
-                cumulativeProbability[i] *= 7;
-                result[i] = (float)Math.Floor(cumulativeProbability[i]);
+                var gk = (int)Math.Round(cumulativeProbability[i] * 255);
+
+                if (gk == i)
+                    result[i] = histogram[i];
+                else
+                    result[gk] = histogram[i];
             }
 
             return result;

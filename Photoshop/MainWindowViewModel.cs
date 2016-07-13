@@ -141,6 +141,18 @@ namespace Photoshop
             }
         }
 
+        private RelayCommand _applyEqualizedHistogramToCommand;
+        public RelayCommand ApplyEqualizedHistogramToCommand
+        {
+            get
+            {
+                if (_applyEqualizedHistogramToCommand == null)
+                    _applyEqualizedHistogramToCommand = new RelayCommand(ApplyEqualizedHistogram);
+
+                return _applyEqualizedHistogramToCommand;
+            }
+        }
+
         private void ShowHistogram()
         {
             var histogramView = new HistogramView();
@@ -219,6 +231,12 @@ namespace Photoshop
         {
             var result = ImageManipulator.ApplyMedianPassFilter(_originalImage, quality);
             Image = BitmapHelper.BitmapToBitmapImage(result);
+        }
+
+        private void ApplyEqualizedHistogram()
+        {
+            //var result = ImageManipulator.ApplyEqualizedHistogramToImage(_originalImage);
+            //Image = BitmapHelper.BitmapToBitmapImage(result);
         }
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };

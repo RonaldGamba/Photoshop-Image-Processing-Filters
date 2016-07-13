@@ -75,6 +75,9 @@
                 <MenuItem Command="{Binding ShowHistogramCommand}"
                           Style="{StaticResource menuItemStyle}"
                           Header="Histograma" />
+                <!--<MenuItem Command="{Binding ApplyEqualizedHistogramToCommand}"
+                          Style="{StaticResource menuItemStyle}"
+                          Header="Aplicar histograma equalizado na imagem" />-->
             </MenuItem>
         </Menu>
         <Grid Grid.Row="1" Margin="0.5">          

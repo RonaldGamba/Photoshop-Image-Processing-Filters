@@ -10,7 +10,7 @@ namespace Photoshop.ViewModels
 {
     public class HistogramViewModel
     {
-        public HistogramViewModel(float[] histogram, float[] equalizedHistogram )
+        public HistogramViewModel(double[] histogram, double[] equalizedHistogram)
         {
             NormalHistogramData = new List<DataPoint>();
             EqualizedHistogramData = new List<DataPoint>();
